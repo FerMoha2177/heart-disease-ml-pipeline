@@ -1,0 +1,20 @@
+{
+  "model_name": "heart_disease_classifier",
+  "version": "1.0.0",
+  "created_date": "2025-07-22",
+  "algorithm": "TBD",
+  "features": [
+    "age", "sex", "cp", "trestbps", "chol", "fbs",
+    "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"
+  ],
+  "target": "target",
+  "metrics": {
+    "accuracy": null,
+    "precision": null,
+    "recall": null,
+    "f1_score": null,
+    "roc_auc": null
+  },
+  "training_data_size": null,
+  "test_data_size": null
+}
