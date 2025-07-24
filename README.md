@@ -2,6 +2,26 @@
 
 A machine learning pipeline for heart disease prediction using medallion architecture (Bronze, Silver, Gold layers) with MongoDB and FastAPI.
 
+## Prerequisites
+
+- Python >= 3.10.12
+- MongoDB
+- FastAPI
+- Motor
+- Pydantic
+- Scikit-learn
+- XGBoost
+- Joblib
+- PyMongo
+- Python-dotenv
+- Matplotlib
+- Seaborn
+- Jupyter
+- Loguru
+- Pytest
+- Httpx
+- IPython
+
 ## Project Structure
 
 ```
@@ -56,11 +76,44 @@ heart-disease-ml-pipeline/
 - `GET /api/v1/db-health` - Database health check
 - `POST /api/v1/predict` - Heart disease prediction
 
+```python
+# User sends this JSON to /predict
+{
+    "age": 55,
+    "sex": 1,
+    "cp": 0,
+    "trestbps": 140,
+    "chol": 200,
+    "fbs": 0,
+    "restecg": 1,
+    "thalach": 150,
+    "exang": 0,
+    "oldpeak": 1.5,
+    "slope": 1,
+    "ca": 0,
+    "thal": 2
+}
+
+# API returns:
+{
+    "prediction": 1,
+    "probability": 0.75,
+    "confidence": "high",
+    "model_version": "1.0.0"
+}
+```
+
+
 ## Medallion Architecture
 
 - **Bronze Layer**: Raw CSV data stored in MongoDB
 - **Silver Layer**: Cleaned and validated data
 - **Gold Layer**: Feature-engineered, model-ready data
+
+
+## End-to-End Pipeline
+
+```CSV Data → Bronze → Silver → Gold → Model Training → .pkl file → API → Predictions```
 
 ## Contributing
 

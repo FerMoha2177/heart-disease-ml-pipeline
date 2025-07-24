@@ -1,118 +1,130 @@
 """
-Pydantic models for heart disease prediction API
-Defines input/output schemas based on Heart Disease UCI dataset
+Pydantic routes for heart disease prediction API
+Defines endpoints for prediction from the models
 """
 
-from pydantic import BaseModel, Field, validator
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime
+from api.services.model_service import MLModelService
+from api.main import get_model_service
+from api.models.prediction import PredictionRequest, PredictionResponse, PatientData
 
+router = APIRouter()
 
-class PatientData(BaseModel):
+@router.post("/predict", response_model=PredictionResponse)
+async def predict_heart_disease(
+    patient_data: PatientData,
+    model_service: ModelService = Depends(get_model_service)
+):
     """
-    Input model for patient data based on Heart Disease UCI dataset
-    """
-    age: int = Field(..., ge=1, le=120, description="Age in years")
-    sex: int = Field(..., ge=0, le=1, description="Sex (1 = male, 0 = female)")
-    cp: int = Field(..., ge=0, le=3, description="Chest pain type (0-3)")
-    trestbps: int = Field(..., ge=80, le=250, description="Resting blood pressure (mm Hg)")
-    chol: int = Field(..., ge=100, le=600, description="Serum cholesterol (mg/dl)")
-    fbs: int = Field(..., ge=0, le=1, description="Fasting blood sugar > 120 mg/dl (1 = true, 0 = false)")
-    restecg: int = Field(..., ge=0, le=2, description="Resting electrocardiographic results (0-2)")
-    thalach: int = Field(..., ge=60, le=220, description="Maximum heart rate achieved")
-    exang: int = Field(..., ge=0, le=1, description="Exercise induced angina (1 = yes, 0 = no)")
-    oldpeak: float = Field(..., ge=0.0, le=10.0, description="ST depression induced by exercise")
-    slope: int = Field(..., ge=0, le=2, description="Slope of peak exercise ST segment (0-2)")
-    ca: int = Field(..., ge=0, le=4, description="Number of major vessels colored by fluoroscopy (0-4)")
-    thal: int = Field(..., ge=0, le=3, description="Thalassemia (0=normal, 1=fixed defect, 2=reversible defect, 3=unknown)")
-
-    @validator('age')
-    def validate_age(cls, v):
-        if v < 1 or v > 120:
-            raise ValueError('Age must be between 1 and 120')
-        return v
-
-    @validator('chol')
-    def validate_cholesterol(cls, v):
-        if v < 100 or v > 600:
-            raise ValueError('Cholesterol must be between 100 and 600 mg/dl')
-        return v
-
-    @validator('thalach')
-    def validate_heart_rate(cls, v):
-        if v < 60 or v > 220:
-            raise ValueError('Maximum heart rate must be between 60 and 220')
-        return v
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "age": 55,
-                "sex": 1,
-                "cp": 0,
-                "trestbps": 140,
-                "chol": 200,
-                "fbs": 0,
-                "restecg": 1,
-                "thalach": 150,
-                "exang": 0,
-                "oldpeak": 1.5,
-                "slope": 1,
-                "ca": 0,
-                "thal": 2
-            }
-        }
-
-
-class PredictionResponse(BaseModel):
-    """
-    Output model for prediction results
-    """
-    prediction: int = Field(..., description="Predicted class (0 = no heart disease, 1 = heart disease)")
-    probability: float = Field(..., description="Probability of heart disease")
-    confidence: str = Field(..., description="Confidence level (low/medium/high)")
-    risk_factors: Optional[list] = Field(None, description="Identified risk factors")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    model_version: str = Field(default="1.0.0", description="Model version used")
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "prediction": 1,
-                "probability": 0.75,
-                "confidence": "high",
-                "risk_factors": ["high_cholesterol", "exercise_angina"],
-                "timestamp": "2025-07-22T14:30:00.000000",
-                "model_version": "1.0.0"
-            }
-        }
-
-
-class PredictionRequest(BaseModel):
-    """
-    Request wrapper for batch predictions (future enhancement)
-    """
-    patient_data: PatientData
-    include_risk_factors: bool = Field(default=True, description="Include risk factor analysis")
+    Predict heart disease risk for a patient
     
-    class Config:
-        schema_extra = {
-            "example": {
-                "patient_data": {
-                    "age": 55,
-                    "sex": 1,
-                    "cp": 0,
-                    "trestbps": 140,
-                    "chol": 200,
-                    "fbs": 0,
-                    "restecg": 1,
-                    "thalach": 150,
-                    "exang": 0,
-                    "oldpeak": 1.5,
-                    "slope": 1,
-                    "ca": 0,
-                    "thal": 2
-                },
-                "include_risk_factors": True
-            }
-        }
+    **Input**: Patient data including age, sex, chest pain type, etc.
+    **Output**: Prediction (0/1), probability, confidence level, and risk factors
+    
+    **Example Request:**
+    ```json
+    {
+        "age": 55,
+        "sex": 1,
+        "cp": 0,
+        "trestbps": 140,
+        "chol": 200,
+        "fbs": 0,
+        "restecg": 1,
+        "thalach": 150,
+        "exang": 0,
+        "oldpeak": 1.5,
+        "slope": 1,
+        "ca": 0,
+        "thal": 2
+    }
+    ```
+    """
+    try:
+        # Log incoming request
+        logger.info(f"Received prediction request for patient: age={patient_data.age}, sex={patient_data.sex}")
+        
+        # Check if model is loaded
+        if not model_service or not model_service.is_loaded():
+            logger.error("Model service not available or model not loaded")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="ML model is not available. Please try again later."
+            )
+        
+        # Convert patient data to prediction format
+        prediction_result = await model_service.predict(patient_data)
+        
+        # Log successful prediction
+        logger.info(f"Prediction successful: {prediction_result['prediction']} (probability: {prediction_result['probability']:.3f})")
+        
+        # Return structured response
+        return PredictionResponse(
+            prediction=prediction_result["prediction"],
+            probability=prediction_result["probability"],
+            confidence=prediction_result["confidence"],
+            risk_factors=prediction_result.get("risk_factors", []),
+            timestamp=datetime.utcnow(),
+            model_version=model_service.version
+        )
+        
+    except ValueError as ve:
+        # Handle validation errors
+        logger.warning(f"Validation error in prediction: {str(ve)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid input data: {str(ve)}"
+        )
+        
+    except Exception as e:
+        # Handle unexpected errors
+        logger.error(f"Unexpected error during prediction: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your prediction request"
+        )
+
+
+
+
+
+
+
+# dummy endpoint for testing
+@router.post("/dummy-predict")
+async def dummy_predict_heart_disease(patient_data: PatientData):
+    """
+    Simple prediction endpoint
+    
+    Input: Patient data (age, sex, chol, etc.)
+    Output: Prediction result
+    """
+    try:
+        # For now, just return a dummy response
+        # Later you'll replace this with actual model prediction
+        
+        logger.info(f"Got prediction request for patient age: {patient_data.age}")
+        
+        # Dummy logic - replace with model prediction
+        risk_score = (patient_data.age * 0.01 + 
+                     patient_data.chol * 0.001 + 
+                     patient_data.trestbps * 0.002)
+        
+        prediction = 1 if risk_score > 2.0 else 0
+        probability = min(risk_score / 4.0, 1.0)
+        
+        return PredictionResponse(
+            prediction=prediction,
+            probability=probability,
+            confidence="medium",
+            model_version="1.0.0",
+            timestamp=datetime.now(),
+            risk_factors=["age", "cholesterol", "blood pressure"]
+        )
+        
+    except Exception as e:
+        logger.error(f"Prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Prediction failed")
+
+

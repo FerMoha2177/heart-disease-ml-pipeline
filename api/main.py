@@ -8,14 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
+from config.logging import setup_logging
+import logging
 
 # Import route modules
 from api.routes import health, prediction
-from api.services.model_service import ModelService
+from api.services.model_service import MLModelService
 from api.services.database_service import DatabaseService
 
 # Load environment variables
 load_dotenv()
+
+# Setup logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Global services
 model_service = None
@@ -28,24 +34,24 @@ async def lifespan(app: FastAPI):
     global model_service, database_service
     
     # Startup
-    print("🚀 Starting Heart Disease Prediction API...")
+    logger.info("Starting Heart Disease Prediction API...")
     
     # Initialize services
     database_service = DatabaseService()
     await database_service.connect()
     
-    model_service = ModelService()
+    model_service = MLModelService()
     await model_service.load_model()
     
-    print("✅ API startup complete!")
+    logger.info("API startup complete!")
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down API...")
+    logger.info("Shutting down API...")
     if database_service:
         await database_service.disconnect()
-    print("✅ API shutdown complete!")
+    logger.info("API shutdown complete!")
 
 
 # Create FastAPI application
@@ -58,10 +64,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
+# Add CORS middleware TODO : CONFIGURE APPROPRIATELY FOR PRODUCTION
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,7 +90,7 @@ async def root():
 
 
 # Make services available to routes
-def get_model_service() -> ModelService:
+def get_model_service() -> MLModelService:
     return model_service
 
 

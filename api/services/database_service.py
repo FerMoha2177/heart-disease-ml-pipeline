@@ -8,7 +8,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure
 from typing import Dict, List, Optional, Any
 import logging
+from config.logging import setup_logging
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -20,9 +22,12 @@ class DatabaseService:
     def __init__(self):
         self.client: Optional[AsyncIOMotorClient] = None
         self.database = None
-        self.connection_string = os.getenv("MONGODB_CONNECTION_STRING")
-        self.database_name = os.getenv("MONGODB_DATABASE_NAME", "healthcare")
-        
+        try:
+            self.connection_string = os.getenv("MONGODB_CONNECTION_STRING")
+            self.database_name = os.getenv("MONGODB_DATABASE_NAME", "healthcare")
+        except Exception as e:
+            logger.error(f"Failed to initialize database service: {str(e)}")
+            
         # Collection names for medallion architecture
         self.collections = {
             "bronze": "heart_disease_bronze",

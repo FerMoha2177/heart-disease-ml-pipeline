@@ -4,6 +4,9 @@ Defines input/output schemas based on Heart Disease UCI dataset
 """
 
 from pydantic import BaseModel, Field, validator
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+
 from typing import Optional
 from datetime import datetime
 
@@ -62,8 +65,6 @@ class PatientData(BaseModel):
                 "thal": 2
             }
         }
-
-
 class PredictionResponse(BaseModel):
     """
     Output model for prediction results

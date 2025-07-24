@@ -44,7 +44,7 @@ venv.bak/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Models and data (optional - uncomment if you don't want to track)
+# Models and data (optional)
 # models/*.pkl
 # data/raw/*.csv
 
