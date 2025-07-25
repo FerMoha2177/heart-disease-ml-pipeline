@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent # or else it can't find packages
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from fastapi import FastAPI, HTTPException
@@ -22,10 +22,9 @@ from config.logging import setup_logging
 
 # Import route modules
 from api.routes import health, prediction
-# from api.services.model_service import MLModelService
-# from api.services.database_service import DatabaseService
-
-from api.dependencies import set_model_service, set_database_service
+from api.services.model_service import MLModelService
+from api.services.database_service import DatabaseService
+from api import dependencies
 
 # Load environment variables
 load_dotenv()
@@ -35,34 +34,61 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Global services
-# model_service = None
-# database_service = None
+model_service = None
+database_service = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    from api.services.model_service import MLModelService
-    from api.services.database_service import DatabaseService
-
-    logger.info("Starting Heart Disease Prediction API...")
-
-    # Create instances
-    db_service = DatabaseService()
-    await db_service.connect()
-    set_database_service(db_service)
-
-    ml_service = MLModelService()
-    await ml_service.load_model()
-    set_model_service(ml_service)
-
-    logger.info("API startup complete!")
-
-    yield
-
-    logger.info("Shutting down API...")
-    await db_service.disconnect()
-    logger.info("API shutdown complete!")
+    global model_service, database_service
+    
+    try:
+        # Startup
+        logger.info("Starting Heart Disease Prediction API...")
+        
+        # Initialize database service
+        try:
+            database_service = DatabaseService()
+            db_connected = await database_service.connect()
+            if db_connected:
+                logger.info("Database service initialized")
+                dependencies.set_database_service(database_service)
+            else:
+                logger.warning("Database connection failed, but continuing...")
+        except Exception as e:
+            logger.warning(f"Database service failed: {e}, but continuing...")
+            database_service = None
+        
+        # Initialize model service
+        try:
+            model_service = MLModelService()
+            model_loaded = await model_service.load_model()
+            if model_loaded:
+                logger.info("Model service initialized")
+                dependencies.set_model_service(model_service)
+            else:
+                logger.error("Model service failed to load")
+        except Exception as e:
+            logger.error(f"Model service error: {e}")
+            model_service = None
+        
+        logger.info("API startup complete!")
+        
+        yield
+        
+    except Exception as e:
+        logger.error(f"Startup error: {e}")
+        yield  # Still start the app even if there are issues
+    finally:
+        # Shutdown
+        logger.info("Shutting down API...")
+        if database_service:
+            try:
+                await database_service.disconnect()
+            except:
+                pass
+        logger.info("API shutdown complete!")
 
 
 # Create FastAPI application
@@ -75,10 +101,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware TODO : CONFIGURE APPROPRIATELY FOR PRODUCTION
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -100,13 +126,7 @@ async def root():
     }
 
 
-# # Make services available to routes
-# def get_model_service() -> MLModelService:
-#     return model_service
-
-
-# def get_database_service() -> DatabaseService:
-#     return database_service
+# Remove the old dependency functions - now using dependencies.py
 
 
 if __name__ == "__main__":

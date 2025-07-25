@@ -46,38 +46,13 @@ async def predict_heart_disease(patient_data: PatientData, model_service: MLMode
     ```
     """
     try:
-        logger.info(f"Received prediction request for patient: age={patient_data.age}, sex={patient_data.sex}")
-        
-       # Check if model service is available
-        if not model_service:
-            logger.error("Model service not available")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="ML model service is not available. Please try again later."
-            )
-        
-        # Check if model is loaded
-        if not model_service.model:
-            logger.error("Model not loaded")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="ML model is not loaded. Please try again later."
-            )
-        
-        # Check if preprocessing service is available
-        # if not model_service.preprocessing_service:
-        #     logger.error("Preprocessing service not available")
-        #     raise HTTPException(
-        #         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        #         detail="Preprocessing service is not available. Please try again later."
-        #     )
+        logger.info(f"Received prediction request for patient: age={patient_data.age}")
         
         # Make prediction using real model
         prediction_result = await model_service.predict(patient_data.dict())
         
         # Log successful prediction
-        logger.info(f"Prediction successful: {prediction_result['prediction']} "
-                   f"(probability: {prediction_result['probability']:.3f})")
+        logger.info(f"Prediction successful: {prediction_result['prediction']}")
         
         # Return structured response
         return PredictionResponse(
@@ -89,12 +64,9 @@ async def predict_heart_disease(patient_data: PatientData, model_service: MLMode
             model_version="1.0.0"
         )
         
-    except ValueError as ve:
-        logger.warning(f"Validation error in prediction: {str(ve)}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid input data: {str(ve)}"
-        )
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 503 from dependencies)
+        raise
         
     except Exception as e:
         logger.error(f"Unexpected error during prediction: {str(e)}")
@@ -103,7 +75,8 @@ async def predict_heart_disease(patient_data: PatientData, model_service: MLMode
             detail="An error occurred while processing your prediction request"
         )
 
-# Keep dummy endpoint for testing/debugging
+
+# dummy endpoint for testing/debugging
 @router.post("/dummy-predict")
 async def dummy_predict_heart_disease(patient_data: PatientData):
     """
