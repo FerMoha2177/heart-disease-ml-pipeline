@@ -1,6 +1,6 @@
 {
   "pipeline_version": "1.0.0",
-  "created_at": "2025-07-25T18:28:23.047213",
+  "created_at": "2025-07-25T18:55:55.752572",
   "gold_layer_shape": [
     1840,
     17
@@ -45,8 +45,8 @@
         "cp_asymptomatic",
         "cp_atypical angina",
         "cp_non-anginal",
-        "cp_typical angina",
         "restecg_normal",
+        "slope_downsloping",
         "slope_flat",
         "slope_not_tested",
         "slope_upsloping"
@@ -99,8 +99,8 @@
       "cp_asymptomatic",
       "cp_atypical angina",
       "cp_non-anginal",
-      "cp_typical angina",
       "restecg_normal",
+      "slope_downsloping",
       "slope_flat",
       "slope_not_tested",
       "slope_upsloping"

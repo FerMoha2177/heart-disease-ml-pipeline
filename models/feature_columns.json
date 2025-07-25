@@ -11,8 +11,8 @@
     "cp_asymptomatic",
     "cp_atypical angina",
     "cp_non-anginal",
-    "cp_typical angina",
     "restecg_normal",
+    "slope_downsloping",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
@@ -29,8 +29,8 @@
     "cp_asymptomatic",
     "cp_atypical angina",
     "cp_non-anginal",
-    "cp_typical angina",
     "restecg_normal",
+    "slope_downsloping",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
@@ -57,9 +57,9 @@
     "slope_upsloping"
   ],
   "convergent_rejected": [
+    "cp_typical angina",
     "restecg_lv hypertrophy",
-    "restecg_st-t abnormality",
-    "slope_downsloping"
+    "restecg_st-t abnormality"
   ],
   "categorical_features": [
     "sex",
@@ -78,8 +78,8 @@
     "cp_asymptomatic",
     "cp_atypical angina",
     "cp_non-anginal",
-    "cp_typical angina",
     "restecg_normal",
+    "slope_downsloping",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
@@ -89,14 +89,14 @@
     "sex",
     "trestbps",
     "chol",
+    "fbs",
     "thalch",
     "exang",
     "oldpeak",
     "cp_asymptomatic",
     "cp_atypical angina",
     "cp_non-anginal",
-    "cp_typical angina",
-    "restecg_normal",
+    "slope_downsloping",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
