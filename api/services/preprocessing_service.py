@@ -2,6 +2,9 @@
 """
 Preprocessing service that loads and applies the complete preprocessing pipeline
 Uses artifacts saved during model training to ensure consistency
+
+
+
 """
 
 import pandas as pd
@@ -17,7 +20,9 @@ logger = logging.getLogger(__name__)
 class PreprocessingService:
     """
     Loads saved preprocessing artifacts and applies the complete transformation pipeline
-    Raw Input → Bronze → Silver → Gold → Model-Ready Data
+
+    Raw Input → Basic Encoding (sex,fbs,exang) → One-Hot Encoding (cp,restecg,slope) → 
+    Validation → Feature Ordering → Scaling → Feature Selection → Model-Ready Data
     """
     
     def __init__(self, model_dir: str = "models"):
@@ -124,19 +129,22 @@ class PreprocessingService:
             df = pd.DataFrame([patient_data])
             logger.debug(f"Input data shape: {df.shape}")
             
-            # Step 2: Apply categorical encoding (Bronze → Silver)
-            df_encoded = self._apply_categorical_encoding(df)
+            # Step 2: Apply basic categorical encoding (sex, fbs, exang → 0/1)
+            df_encoded = self._apply_basic_categorical_encoding(df)
             
-            # Step 3: Validate and clip values
-            df_validated = self._validate_and_clip(df_encoded)
+            # Step 3: Apply one-hot encoding (cp, restecg, slope → multiple columns)
+            df_onehot = self._apply_one_hot_encoding(df_encoded)
             
-            # Step 4: Ensure feature order matches expected input
+            # Step 4: Validate and clip values
+            df_validated = self._validate_and_clip(df_onehot)
+            
+            # Step 5: Ensure feature order matches expected input
             df_ordered = self._ensure_feature_order(df_validated)
             
-            # Step 5: Apply scaling (Silver → Gold)
+            # Step 6: Apply scaling (Silver → Gold)
             df_scaled = self._apply_scaling(df_ordered)
             
-            # Step 6: Select final features for model
+            # Step 7: Select final features for model
             processed_array = self._select_final_features(df_scaled)
             
             logger.info(f"Preprocessing complete. Output shape: {processed_array.shape}")
@@ -146,27 +154,86 @@ class PreprocessingService:
             logger.error(f"Preprocessing failed: {str(e)}")
             raise ValueError(f"Preprocessing error: {str(e)}")
     
-    def _apply_categorical_encoding(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply categorical encoding to string features"""
+    def _apply_basic_categorical_encoding(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Apply basic categorical encoding for binary features (sex, fbs, exang)"""
         df_encoded = df.copy()
         
-        # Convert categorical strings to numeric values
-        for feature in df_encoded.columns:
-            if df_encoded[feature].dtype == 'object':
+        # Binary features that get simple 0/1 encoding
+        binary_features = ['sex', 'fbs', 'exang']
+        
+        for feature in binary_features:
+            if feature in df_encoded.columns:
+                value = df_encoded[feature].iloc[0]
+                
                 if feature in self.categorical_encoders:
                     encoder_map = self.categorical_encoders[feature]
-                    try:
-                        value = df_encoded[feature].iloc[0]
-                        if value in encoder_map:
-                            df_encoded[feature] = encoder_map[value]
-                        else:
-                            logger.warning(f"Unknown categorical value for {feature}: {value}")
+                    if value in encoder_map:
+                        df_encoded[feature] = encoder_map[value]
+                        logger.debug(f"Encoded {feature}: '{value}' → {encoder_map[value]}")
+                    else:
+                        # Try to use as numeric
+                        try:
+                            df_encoded[feature] = int(float(value))
+                            logger.debug(f"Used numeric value for {feature}: {value}")
+                        except (ValueError, TypeError):
+                            logger.warning(f"Unknown value '{value}' for {feature}, using 0")
                             df_encoded[feature] = 0
-                    except (ValueError, TypeError):
-                        logger.warning(f"Error encoding {feature}, using 0")
-                        df_encoded[feature] = 0
         
         return df_encoded
+    
+    def _apply_one_hot_encoding(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Apply one-hot encoding for multi-class categorical features (cp, restecg, slope)"""
+        df_onehot = df.copy()
+        
+        # Multi-class features that need one-hot encoding
+        multiclass_features = ['cp', 'restecg', 'slope']
+        
+        for feature in multiclass_features:
+            if feature in df_onehot.columns:
+                value = df_onehot[feature].iloc[0]
+                
+                # Convert string categories to numeric first if needed
+                if isinstance(value, str) and feature in self.categorical_encoders:
+                    encoder_map = self.categorical_encoders[feature]
+                    if value in encoder_map:
+                        value = encoder_map[value]
+                    else:
+                        logger.warning(f"Unknown string value '{value}' for {feature}, using 0")
+                        value = 0
+                
+                # Ensure value is numeric
+                try:
+                    numeric_value = int(float(value))
+                except (ValueError, TypeError):
+                    logger.warning(f"Could not convert {feature} value '{value}' to numeric, using 0")
+                    numeric_value = 0
+                
+                # Create one-hot encoded columns based on the feature type
+                if feature == 'cp':
+                    # cp: 0=typical_angina, 1=atypical_angina, 2=non_anginal, 3=asymptomatic
+                    df_onehot[f'{feature}_asymptomatic'] = 1 if numeric_value == 3 else 0
+                    df_onehot[f'{feature}_atypical angina'] = 1 if numeric_value == 1 else 0
+                    df_onehot[f'{feature}_non-anginal'] = 1 if numeric_value == 2 else 0
+                    # Note: typical_angina is the reference category (all others = 0)
+                    
+                elif feature == 'restecg':
+                    # restecg: 0=normal, 1=ST-T abnormality, 2=LV hypertrophy
+                    df_onehot[f'{feature}_normal'] = 1 if numeric_value == 0 else 0
+                    df_onehot[f'{feature}_st-t abnormality'] = 1 if numeric_value == 1 else 0
+                    # Note: LV hypertrophy is the reference category
+                    
+                elif feature == 'slope':
+                    # slope: 0=upsloping, 1=flat, 2=downsloping
+                    df_onehot[f'{feature}_flat'] = 1 if numeric_value == 1 else 0
+                    df_onehot[f'{feature}_not_tested'] = 0  # This seems to be an artifact from training
+                    df_onehot[f'{feature}_upsloping'] = 1 if numeric_value == 0 else 0
+                    # Note: downsloping is the reference category
+                
+                # Remove original column
+                df_onehot = df_onehot.drop(feature, axis=1)
+                logger.debug(f"One-hot encoded {feature} (value={numeric_value})")
+        
+        return df_onehot
     
     def _validate_and_clip(self, df: pd.DataFrame) -> pd.DataFrame:
         """Validate and clip values to reasonable ranges"""
@@ -190,24 +257,26 @@ class PreprocessingService:
         return df_validated
     
     def _ensure_feature_order(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Ensure features are in the correct order and all expected features are present"""
-        # Get expected raw features from pipeline metadata (not feature_info)
-        if self.pipeline_metadata and 'api_input_format' in self.pipeline_metadata:
-            expected_features = self.pipeline_metadata['api_input_format']['expected_raw_features']
+        """Ensure all expected features are present and in correct order"""
+        # Get expected features after one-hot encoding from metadata
+        if self.pipeline_metadata and 'transformation_details' in self.pipeline_metadata:
+            scaling_features = self.pipeline_metadata['transformation_details']['scaling']['numerical_features']
         else:
-            # Fallback to the standard feature order
-            expected_features = [
-                'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 
-                'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
+            # Fallback: expected features after one-hot encoding
+            scaling_features = [
+                'age', 'sex', 'trestbps', 'chol', 'fbs', 'thalch', 'exang', 'oldpeak',
+                'cp_asymptomatic', 'cp_atypical angina', 'cp_non-anginal',
+                'restecg_normal', 'restecg_st-t abnormality',
+                'slope_flat', 'slope_not_tested', 'slope_upsloping'
             ]
-            logger.warning("Using fallback expected features")
+            logger.warning("Using fallback feature list for scaling")
         
         # Reindex to match expected feature order, filling missing with 0
-        df_ordered = df.reindex(columns=expected_features, fill_value=0)
+        df_ordered = df.reindex(columns=scaling_features, fill_value=0)
         
-        missing_features = [f for f in expected_features if f not in df.columns]
+        missing_features = [f for f in scaling_features if f not in df.columns]
         if missing_features:
-            logger.warning(f"Missing features filled with 0: {missing_features}")
+            logger.debug(f"Added missing features with 0: {missing_features}")
         
         return df_ordered
     
@@ -221,7 +290,7 @@ class PreprocessingService:
             df_scaled = df.copy()
             scaled_data = self.scaler.transform(df_scaled)
             df_scaled = pd.DataFrame(scaled_data, columns=df_scaled.columns, index=df_scaled.index)
-            logger.debug("Applied MinMax scaling")
+            logger.debug("Applied MinMax scaling successfully")
             return df_scaled
         except Exception as e:
             logger.error(f"Scaling failed: {e}")
