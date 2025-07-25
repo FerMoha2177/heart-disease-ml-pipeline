@@ -41,7 +41,7 @@ async def database_health_check(
             return DatabaseHealthResponse(
                 status="healthy",
                 message="Database connection successful",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.timezone.utc),
                 database_name=db_status["database"],
                 collections_count=db_status["collections_count"],
                 connection_status="connected"
@@ -50,7 +50,7 @@ async def database_health_check(
             return DatabaseHealthResponse(
                 status="unhealthy",
                 message="Database connection failed",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.timezone.utc),
                 database_name="unknown",
                 collections_count=0,
                 connection_status="disconnected"
@@ -77,7 +77,7 @@ async def model_health_check():
             return {
                 "status": "healthy",
                 "message": "ML model is loaded and ready",
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(datetime.timezone.utc),
                 "model_version": getattr(model_service, 'version', '1.0.0'),
                 "model_type": getattr(model_service, 'model_type', 'classification')
             }
@@ -85,7 +85,7 @@ async def model_health_check():
             return {
                 "status": "unhealthy",
                 "message": "ML model is not loaded",
-                "timestamp": datetime.utcnow()
+                "timestamp": datetime.now(datetime.timezone.utc)
             }
             
     except Exception as e:

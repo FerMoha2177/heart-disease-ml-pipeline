@@ -5,16 +5,15 @@ Handles the trained heart disease prediction model
 
 import os
 import joblib
-import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 import logging
 from datetime import datetime
-import database_service
+from api.models.prediction import PatientData
 
 logger = logging.getLogger(__name__)
 
-
+MODEL_DIR = "../../models"
 class MLModelService:
     """
     Service for loading and serving ML model predictions
@@ -22,7 +21,7 @@ class MLModelService:
     
     def __init__(self):
         self.model = None
-        self.model_path = os.getenv("MODEL_PATH", "models/heart_disease_model.pkl")
+        self.model_path = os.getenv("MODEL_PATH", f"{MODEL_DIR}/heart_disease_model.joblib")
         self.version = os.getenv("MODEL_VERSION", "1.0.0")
         self.model_type = "classification"
         self.feature_names = [
@@ -43,7 +42,7 @@ class MLModelService:
                 return True
             
             self.model = joblib.load(self.model_path)
-            self.loaded_at = datetime.utcnow()
+            self.loaded_at = datetime.now(datetime.timezone.utc)
             logger.info(f"Model loaded successfully from {self.model_path}")
             return True
             
@@ -59,7 +58,7 @@ class MLModelService:
                 raise ValueError("Model is not loaded")
             
             # Convert patient data to a DataFrame
-            df = pd.DataFrame([patient_data]) #TODO: need to read from Gold Layer
+            df = pd.DataFrame([patient_data])
             
             # Ensure all required features are present
             missing_features = [f for f in self.feature_names if f not in df.columns]
@@ -79,3 +78,11 @@ class MLModelService:
         except Exception as e:
             logger.error(f"Prediction error: {str(e)}")
             raise
+    
+    async def _create_dummy_model(self):
+        """
+        Create a dummy model for development
+        """
+        self.model = joblib.load("../../models/dummy_model.joblib")
+        self.loaded_at = datetime.now(datetime.timezone.utc)
+        logger.info("Dummy model created successfully")
