@@ -1,10 +1,5 @@
 #!/bin/bash
-
-# Startup script for Render deployment
 echo "Starting Heart Disease ML API..."
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the FastAPI application
-cd api && python main.py
+# Use gunicorn for production
+cd api && gunicorn main:app -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:10000

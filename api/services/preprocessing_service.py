@@ -127,49 +127,44 @@ class PreprocessingService:
             # Step 2: Apply categorical encoding (Bronze → Silver)
             df_encoded = self._apply_categorical_encoding(df)
             
-            # Step 3: Validate and clip values (Silver quality checks)
+            # Step 3: Validate and clip values
             df_validated = self._validate_and_clip(df_encoded)
             
-            # Step 4: Ensure correct feature order (Silver → Gold preparation)
+            # Step 4: Ensure feature order matches expected input
             df_ordered = self._ensure_feature_order(df_validated)
             
-            # Step 5: Apply scaling (Gold layer transformation)
-            scaled_array = self._apply_scaling(df_ordered)
+            # Step 5: Apply scaling (Silver → Gold)
+            df_scaled = self._apply_scaling(df_ordered)
             
-            # Step 6: Apply feature selection (Gold layer final form)
-            final_array = self._apply_feature_selection(scaled_array, df_ordered.columns.tolist())
+            # Step 6: Select final features for model
+            processed_array = self._select_final_features(df_scaled)
             
-            logger.info(f"Preprocessing complete: {final_array.shape}")
-            return final_array
+            logger.info(f"Preprocessing complete. Output shape: {processed_array.shape}")
+            return processed_array
             
         except Exception as e:
-            logger.error(f"Preprocessing failed: {e}")
-            raise ValueError(f"Preprocessing error: {e}")
+            logger.error(f"Preprocessing failed: {str(e)}")
+            raise ValueError(f"Preprocessing error: {str(e)}")
     
     def _apply_categorical_encoding(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply categorical encoding using saved mappings"""
+        """Apply categorical encoding to string features"""
         df_encoded = df.copy()
         
-        categorical_features = self.feature_info.get('categorical_features', [])
-        
-        for feature in categorical_features:
-            if feature in df_encoded.columns:
-                value = df_encoded[feature].iloc[0]
-                
-                # Try to encode the value
+        # Convert categorical strings to numeric values
+        for feature in df_encoded.columns:
+            if df_encoded[feature].dtype == 'object':
                 if feature in self.categorical_encoders:
-                    mapping = self.categorical_encoders[feature]
-                    if value in mapping:
-                        df_encoded[feature] = mapping[value]
-                        logger.debug(f"Encoded {feature}: '{value}' → {mapping[value]}")
-                    else:
-                        # Try as numeric
-                        try:
-                            df_encoded[feature] = int(float(value))
-                            logger.debug(f"Used numeric value for {feature}: {value}")
-                        except (ValueError, TypeError):
-                            logger.warning(f"Unknown value '{value}' for {feature}, using 0")
+                    encoder_map = self.categorical_encoders[feature]
+                    try:
+                        value = df_encoded[feature].iloc[0]
+                        if value in encoder_map:
+                            df_encoded[feature] = encoder_map[value]
+                        else:
+                            logger.warning(f"Unknown categorical value for {feature}: {value}")
                             df_encoded[feature] = 0
+                    except (ValueError, TypeError):
+                        logger.warning(f"Error encoding {feature}, using 0")
+                        df_encoded[feature] = 0
         
         return df_encoded
     
@@ -196,7 +191,16 @@ class PreprocessingService:
     
     def _ensure_feature_order(self, df: pd.DataFrame) -> pd.DataFrame:
         """Ensure features are in the correct order and all expected features are present"""
-        expected_features = self.feature_info['expected_raw_features']
+        # Get expected raw features from pipeline metadata (not feature_info)
+        if self.pipeline_metadata and 'api_input_format' in self.pipeline_metadata:
+            expected_features = self.pipeline_metadata['api_input_format']['expected_raw_features']
+        else:
+            # Fallback to the standard feature order
+            expected_features = [
+                'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 
+                'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
+            ]
+            logger.warning("Using fallback expected features")
         
         # Reindex to match expected feature order, filling missing with 0
         df_ordered = df.reindex(columns=expected_features, fill_value=0)
@@ -207,48 +211,41 @@ class PreprocessingService:
         
         return df_ordered
     
-    def _apply_scaling(self, df: pd.DataFrame) -> np.ndarray:
-        """Apply the saved MinMaxScaler"""
-        if self.scaler is not None:
-            # Apply scaling to the entire feature set
-            scaled_array = self.scaler.transform(df)
-            logger.debug("Applied saved MinMaxScaler")
-            return scaled_array
+    def _apply_scaling(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Apply MinMax scaling using fitted scaler"""
+        if not self.scaler:
+            logger.warning("No scaler available, skipping scaling")
+            return df
+            
+        try:
+            df_scaled = df.copy()
+            scaled_data = self.scaler.transform(df_scaled)
+            df_scaled = pd.DataFrame(scaled_data, columns=df_scaled.columns, index=df_scaled.index)
+            logger.debug("Applied MinMax scaling")
+            return df_scaled
+        except Exception as e:
+            logger.error(f"Scaling failed: {e}")
+            return df
+    
+    def _select_final_features(self, df: pd.DataFrame) -> np.ndarray:
+        """Select only the features used by the final model"""
+        if self.feature_info and 'selected_features' in self.feature_info:
+            selected_features = self.feature_info['selected_features']
+            
+            # Filter DataFrame to only include selected features
+            df_final = df.reindex(columns=selected_features, fill_value=0)
+            logger.debug(f"Selected {len(selected_features)} features for model")
+            return df_final.values
         else:
-            logger.warning("No saved scaler available, using raw values")
+            logger.warning("No feature selection info, using all features")
             return df.values
     
-    def _apply_feature_selection(self, scaled_array: np.ndarray, column_names: List[str]) -> np.ndarray:
-        """Apply feature selection to match training data"""
-        if 'selected_features' not in self.feature_info:
-            # No feature selection was applied
-            return scaled_array
-        
-        selected_features = self.feature_info['selected_features']
-        
-        # Find indices of selected features
-        try:
-            selected_indices = [column_names.index(feature) for feature in selected_features 
-                              if feature in column_names]
-            
-            if len(selected_indices) != len(selected_features):
-                logger.warning(f"Some selected features not found in input")
-            
-            # Select only the chosen features
-            final_array = scaled_array[:, selected_indices]
-            logger.debug(f"Applied feature selection: {scaled_array.shape[1]} → {final_array.shape[1]} features")
-            return final_array
-            
-        except Exception as e:
-            logger.error(f"Feature selection failed: {e}")
-            return scaled_array
-    
     def get_preprocessing_info(self) -> Dict[str, Any]:
-        """Return information about the loaded preprocessing pipeline"""
+        """Get information about loaded preprocessing artifacts"""
         return {
-            "status": "loaded" if self.is_loaded else "error",
-            "error": self.load_error if not self.is_loaded else None,
-            "artifacts_loaded": {
+            "is_loaded": self.is_loaded,
+            "load_error": self.load_error,
+            "artifacts_status": {
                 "scaler": self.scaler is not None,
                 "categorical_encoders": len(self.categorical_encoders) > 0,
                 "feature_info": self.feature_info is not None,
@@ -256,22 +253,27 @@ class PreprocessingService:
             },
             "pipeline_info": {
                 "version": self.pipeline_metadata.get("pipeline_version", "unknown") if self.pipeline_metadata else "unknown",
-                "expected_features": self.feature_info.get("expected_raw_features", []) if self.feature_info else [],
+                "expected_features": self._get_expected_raw_features(),
                 "final_features": self.feature_info.get("selected_features", []) if self.feature_info else [],
                 "transformation_steps": self.pipeline_metadata.get("complete_transformation_steps", []) if self.pipeline_metadata else []
             }
         }
     
+    def _get_expected_raw_features(self) -> List[str]:
+        """Get expected raw features from the correct location"""
+        if self.pipeline_metadata and 'api_input_format' in self.pipeline_metadata:
+            return self.pipeline_metadata['api_input_format']['expected_raw_features']
+        else:
+            return [
+                'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 
+                'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
+            ]
+    
     def validate_input(self, patient_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate input data before preprocessing"""
         validation_result = {"valid": True, "errors": [], "warnings": []}
         
-        if not self.feature_info:
-            validation_result["valid"] = False
-            validation_result["errors"].append("Feature information not loaded")
-            return validation_result
-        
-        expected_features = self.feature_info.get("expected_raw_features", [])
+        expected_features = self._get_expected_raw_features()
         
         # Check for missing required features
         missing_features = [f for f in expected_features if f not in patient_data]

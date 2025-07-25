@@ -24,6 +24,7 @@ from config.logging import setup_logging
 from api.routes import health, prediction
 from api.services.model_service import MLModelService
 from api.services.database_service import DatabaseService
+from api.services.preprocessing_service import PreprocessingService
 from api import dependencies
 
 # Load environment variables
@@ -36,12 +37,13 @@ logger = logging.getLogger(__name__)
 # Global services
 model_service = None
 database_service = None
+preprocessing_service = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    global model_service, database_service
+    global model_service, database_service, preprocessing_service
     
     try:
         # Startup
@@ -60,7 +62,19 @@ async def lifespan(app: FastAPI):
             logger.warning(f"Database service failed: {e}, but continuing...")
             database_service = None
         
-        # Initialize model service
+        # Initialize preprocessing service FIRST (before model service)
+        try:
+            preprocessing_service = PreprocessingService()
+            if preprocessing_service.is_loaded:
+                logger.info("Preprocessing service initialized")
+                dependencies.set_preprocessing_service(preprocessing_service)
+            else:
+                logger.error("Preprocessing service failed to load")
+        except Exception as e:
+            logger.error(f"Preprocessing service error: {e}")
+            preprocessing_service = None
+        
+        # Initialize model service (depends on preprocessing service)
         try:
             model_service = MLModelService()
             model_loaded = await model_service.load_model()
@@ -91,13 +105,11 @@ async def lifespan(app: FastAPI):
         logger.info("API shutdown complete!")
 
 
-# Create FastAPI application
+# Create FastAPI app
 app = FastAPI(
     title="Heart Disease Prediction API",
-    description="ML API for predicting heart disease using medallion architecture",
+    description="ML-powered API for predicting heart disease risk",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
     lifespan=lifespan
 )
 
@@ -111,9 +123,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(health.router, prefix="/api/v1", tags=["Health"])
-app.include_router(prediction.router, prefix="/api/v1", tags=["Predictions"])
-
+app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(prediction.router, prefix="/api/v1", tags=["prediction"])
 
 @app.get("/")
 async def root():
@@ -121,23 +132,14 @@ async def root():
     return {
         "message": "Heart Disease Prediction API",
         "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/api/v1/health"
+        "docs": "/docs"
     }
-
-
-# Remove the old dependency functions - now using dependencies.py
-
 
 if __name__ == "__main__":
     import uvicorn
-    
-    host = os.getenv("API_HOST", "0.0.0.0")
-    port = int(os.getenv("API_PORT", 8000))
-    
     uvicorn.run(
         "api.main:app",
-        host=host,
-        port=port,
+        host="0.0.0.0",
+        port=8000,
         reload=True
     )

@@ -9,12 +9,14 @@ import logging
 
 from api.services.model_service import MLModelService
 from api.services.database_service import DatabaseService
+from api.services.preprocessing_service import PreprocessingService
 
 logger = logging.getLogger(__name__)
 
 # Global service instances (set by main.py during startup)
 _model_service: Optional[MLModelService] = None
 _database_service: Optional[DatabaseService] = None
+_preprocessing_service: Optional[PreprocessingService] = None
 
 def set_model_service(service: MLModelService):
     """Set the global model service instance"""
@@ -28,6 +30,12 @@ def set_database_service(service: DatabaseService):
     _database_service = service
     logger.info("Database service registered in dependencies")
 
+def set_preprocessing_service(service: PreprocessingService):
+    """Set the global preprocessing service instance"""
+    global _preprocessing_service
+    _preprocessing_service = service
+    logger.info("Preprocessing service registered in dependencies")
+
 def get_model_service() -> MLModelService:
     """
     Dependency to get the model service
@@ -40,7 +48,7 @@ def get_model_service() -> MLModelService:
             detail="Model service is not available. Please try again later."
         )
     
-    if not _model_service.is_loaded:
+    if not _model_service.model:
         logger.error("Model not loaded")
         raise HTTPException(
             status_code=503,
@@ -63,6 +71,27 @@ def get_database_service() -> DatabaseService:
     
     return _database_service
 
+def get_preprocessing_service() -> PreprocessingService:
+    """
+    Dependency to get the preprocessing service
+    Raises HTTP 503 if service is not available
+    """
+    if _preprocessing_service is None:
+        logger.error("Preprocessing service not available")
+        raise HTTPException(
+            status_code=503,
+            detail="Preprocessing service is not available. Please try again later."
+        )
+    
+    if not _preprocessing_service.is_loaded:
+        logger.error("Preprocessing artifacts not loaded")
+        raise HTTPException(
+            status_code=503,
+            detail="Preprocessing pipeline is not loaded. Please try again later."
+        )
+    
+    return _preprocessing_service
+
 def get_model_service_optional() -> Optional[MLModelService]:
     """
     Get model service without raising exceptions
@@ -76,3 +105,10 @@ def get_database_service_optional() -> Optional[DatabaseService]:
     Returns None if not available
     """
     return _database_service
+
+def get_preprocessing_service_optional() -> Optional[PreprocessingService]:
+    """
+    Get preprocessing service without raising exceptions
+    Returns None if not available
+    """
+    return _preprocessing_service

@@ -5,12 +5,9 @@ Handles the trained heart disease prediction model
 
 import os
 import joblib
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 import logging
 from datetime import datetime
-from pathlib import Path
 
 from config.logging import setup_logging
 setup_logging()
@@ -31,7 +28,7 @@ class MLModelService:
 
         self.preprocessing_service = None
         
-        # Expected feature order (from your Gold layer)
+        # Expected feature order (from  Gold layer)
         self.expected_features = [
             'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 
             'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
@@ -42,12 +39,13 @@ class MLModelService:
         Load the trained ML model from disk
         """
         try:
-            from api.dependencies import get_preprocessing_service  
+            # Import here to avoid circular imports
+            from api.dependencies import get_preprocessing_service_optional
 
-            # Check if model file exists
-            self.preprocessing_service = get_preprocessing_service()
-            if not self.preprocessing_service.is_loaded:
-                logger.error("Preprocessing service failed to load")
+            # Get preprocessing service (without raising exceptions)
+            self.preprocessing_service = get_preprocessing_service_optional()
+            if not self.preprocessing_service or not self.preprocessing_service.is_loaded:
+                logger.error("Preprocessing service not available or not loaded")
                 return False
             
             if not os.path.exists(self.model_path):
@@ -141,59 +139,6 @@ class MLModelService:
         except Exception as e:
             logger.error(f"Prediction error: {str(e)}")
             raise ValueError(f"Prediction failed: {str(e)}")
-        # try:
-        #     if not self.model:
-        #         raise ValueError("Model is not loaded")
-            
-        #     logger.debug(f"Making prediction for patient data: {patient_data}")
-            
-        #     # Convert patient data to DataFrame with correct feature order
-        #     df = pd.DataFrame([patient_data])
-            
-        #     # Ensure all expected features are present and in correct order
-        #     for feature in self.expected_features:
-        #         if feature not in df.columns:
-        #             logger.warning(f"Missing feature '{feature}', setting to 0")
-        #             df[feature] = 0
-            
-        #     # Reorder columns to match training data
-        #     df = df[self.expected_features]
-            
-        #     logger.debug(f"Input shape for model: {df.shape}")
-        #     logger.debug(f"Feature values: {df.iloc[0].to_dict()}")
-            
-        #     # Make prediction
-        #     prediction = self.model.predict(df)[0]
-        #     prediction_proba = self.model.predict_proba(df)[0]
-            
-        #     # Get probability of heart disease (class 1)
-        #     heart_disease_probability = prediction_proba[1] if len(prediction_proba) > 1 else prediction_proba[0]
-            
-        #     # Determine confidence level
-        #     max_prob = max(prediction_proba)
-        #     if max_prob > 0.8:
-        #         confidence = "high"
-        #     elif max_prob > 0.6:
-        #         confidence = "medium"  
-        #     else:
-        #         confidence = "low"
-            
-        #     # Identify risk factors
-        #     risk_factors = self._identify_risk_factors(patient_data, prediction)
-            
-        #     result = {
-        #         "prediction": int(prediction),
-        #         "probability": float(heart_disease_probability),
-        #         "confidence": confidence,
-        #         "risk_factors": risk_factors
-        #     }
-            
-        #     logger.info(f"Prediction result: {result}")
-        #     return result
-            
-        # except Exception as e:
-        #     logger.error(f"Prediction error: {str(e)}")
-        #     raise ValueError(f"Prediction failed: {str(e)}")
     
     def _identify_risk_factors(self, patient_data: Dict[str, Any], prediction: int) -> list:
         """Basic risk factor identification"""
