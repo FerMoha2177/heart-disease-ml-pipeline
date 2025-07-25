@@ -10,6 +10,14 @@ import numpy as np
 
 # Missing Data Pattern Analysis
 
+def drop_id(df):
+    """Drop the id column"""
+    df = df.copy()
+    for col in df.columns:
+        if col == 'id' or col == '_id':
+            df = df.drop(columns=[col])
+    return df
+
 def get_missing_data_summary(df):
     """
     Getting where the missing values are coming from seeing if it leans towards a specific column
