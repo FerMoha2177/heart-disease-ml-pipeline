@@ -75,7 +75,7 @@ def test_missing_bias(df, col, target='num'):
     Returns:
         bool: True if MNAR suspected, False otherwise
     """
-    #logger.info(f"Missing pattern correlation with target column {col}")
+    # logger.info(f"Missing pattern correlation with target column {col}")
     df_copy = df.copy()
     df_copy[f'{col}_missing'] = df_copy[col].isnull()
     
@@ -83,9 +83,9 @@ def test_missing_bias(df, col, target='num'):
     contingency = pd.crosstab(df_copy[f'{col}_missing'], df_copy[target])
     chi2_statistic, p_value, _, _ = stats.chi2_contingency(contingency)
     
-    #logger.info(f"Chi-square test for missing pattern correlation with target column {col}:")
-    #logger.info(f"  Chi-square statistic: {chi2_statistic:.4f}, p-value: {p_value:.4f}")
-    #logger.info(f"  {'MNAR suspected' if p_value < 0.05 else 'Possibly MAR'}")
+    # logger.info(f"Chi-square test for missing pattern correlation with target column {col}:")
+    # logger.info(f"  Chi-square statistic: {chi2_statistic:.4f}, p-value: {p_value:.4f}")
+    # logger.info(f"  {'MNAR suspected' if p_value < 0.05 else 'Possibly MAR'}")
     
     return p_value < 0.05
 
@@ -112,10 +112,6 @@ def analyze_missing_patterns(df, high_missing_cols=['ca', 'thal', 'slope']):
     # Check correlation between missing patterns
     missing_corr = df_copy[[f'{col}_missing' for col in high_missing_cols]].corr()
     
-    #logger.info(f"Missing pattern correlations:")
-    #logger.info(f"\n{missing_corr}")
-    
-    # High correlation suggests systematic missingness (MNAR)
     return missing_corr
 
 
@@ -163,15 +159,8 @@ def missing_by_outcome(df, col, target='num'):
     df_copy = df.copy()
     missing_by_target = df_copy.groupby(target)[col].apply(lambda x: x.isnull().mean())
     
-    # logger.info(f"\n{col} missing rates by target value:")
-    # for target_val, missing_rate in missing_by_target.items():
-    #     logger.info(f"  Target {target_val}: {missing_rate:.1%} missing")
-    
     # Large differences suggest MNAR
     max_diff = missing_by_target.max() - missing_by_target.min()
-    #logger.info(f"  Max difference: {max_diff:.1%}")
-    #logger.info(f"  {'MNAR likely' if max_diff > 0.1 else 'Possibly MAR'}")
-    
     return max_diff > 0.1
 
 

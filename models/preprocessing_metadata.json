@@ -1,8 +1,8 @@
 {
   "pipeline_version": "1.0.0",
-  "created_at": "2025-07-25T12:28:58.899026",
+  "created_at": "2025-07-25T16:45:03.222528",
   "gold_layer_shape": [
-    19320,
+    920,
     17
   ],
   "final_feature_count": 16,
@@ -47,9 +47,9 @@
         "cp_non-anginal",
         "restecg_normal",
         "restecg_st-t abnormality",
+        "slope_downsloping",
         "slope_flat",
-        "slope_not_tested",
-        "slope_upsloping"
+        "slope_not_tested"
       ],
       "fitted_on_gold_data": true
     },
@@ -101,9 +101,9 @@
       "cp_non-anginal",
       "restecg_normal",
       "restecg_st-t abnormality",
+      "slope_downsloping",
       "slope_flat",
-      "slope_not_tested",
-      "slope_upsloping"
+      "slope_not_tested"
     ],
     "output_shape": 16
   },
@@ -134,10 +134,10 @@
     }
   },
   "data_summary": {
-    "training_samples": 19320,
+    "training_samples": 920,
     "target_distribution": {
-      "1": 10689,
-      "0": 8631
+      "1": 509,
+      "0": 411
     },
     "feature_types": {
       "numerical": 16,
