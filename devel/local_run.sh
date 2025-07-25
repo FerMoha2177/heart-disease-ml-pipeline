@@ -1,9 +1,18 @@
 #!/bin/bash
 
 # Heart Disease ML API - Local Development Runner
-# This script sets up and runs the complete development environment
+# Fixed to work from project root directory
 
 set -e  # Exit on any error
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Configuration
+PROJECT_NAME="heart-disease-ml"
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"  # Use full path
+ENV_FILE="$PROJECT_ROOT/.env"
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,11 +20,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
-
-# Configuration
-PROJECT_NAME="heart-disease-ml"
-COMPOSE_FILE="docker-compose.yml"
-ENV_FILE=".env"
 
 # Function to print colored output
 print_status() {
@@ -56,20 +60,23 @@ check_docker_compose() {
     print_status "Checking Docker Compose..."
     
     if command -v docker-compose &> /dev/null; then
-        COMPOSE_CMD="docker-compose"
+        COMPOSE_CMD="docker-compose -f $COMPOSE_FILE"
     elif docker compose version &> /dev/null; then
-        COMPOSE_CMD="docker compose"
+        COMPOSE_CMD="docker compose -f $COMPOSE_FILE"
     else
         print_error "Docker Compose is not available"
         exit 1
     fi
     
-    print_success "Using: $COMPOSE_CMD"
+    print_success "Using: docker compose with file $COMPOSE_FILE"
 }
 
 # Function to create environment file if it doesn't exist
 setup_env() {
     print_status "Setting up environment..."
+    
+    # Change to project root for .env file
+    cd "$PROJECT_ROOT"
     
     if [ ! -f "$ENV_FILE" ]; then
         if [ -f ".env.example" ]; then
@@ -77,8 +84,8 @@ setup_env() {
             print_warning "Created .env from .env.example. Please update MongoDB connection if needed."
         else
             cat > .env << EOF
-# MongoDB Configuration (Local Docker)
-MONGODB_CONNECTION_STRING=mongodb://admin:admin123@mongodb:27017/healthcare?authSource=admin
+# MongoDB Configuration (Docker MongoDB)
+MONGODB_CONNECTION_STRING=mongodb://admin:admin123@localhost:27017/healthcare?authSource=admin
 MONGODB_DATABASE_NAME=healthcare
 
 # API Configuration
@@ -87,7 +94,7 @@ API_PORT=8000
 API_WORKERS=1
 
 # Model Configuration
-MODEL_PATH=models/heart_disease_model.pkl
+MODEL_PATH=models/heart_disease_classifier.joblib
 MODEL_VERSION=1.0.0
 
 # Logging
@@ -96,7 +103,7 @@ LOG_LEVEL=INFO
 # Environment
 ENVIRONMENT=development
 EOF
-            print_success "Created default .env file"
+            print_success "Created default .env file for Docker development"
         fi
     else
         print_success "Environment file already exists"
@@ -107,7 +114,10 @@ EOF
 create_directories() {
     print_status "Creating necessary directories..."
     
-    directories=("models" "data" "logs" "notebooks" "scripts")
+    # Change to project root
+    cd "$PROJECT_ROOT"
+    
+    directories=("models" "data/raw" "data/processed" "logs" "notebooks")
     
     for dir in "${directories[@]}"; do
         if [ ! -d "$dir" ]; then
@@ -117,37 +127,6 @@ create_directories() {
     done
     
     print_success "Directories ready"
-}
-
-# Function to create MongoDB initialization script
-create_mongo_init() {
-    print_status "Creating MongoDB initialization script..."
-    
-    if [ ! -f "scripts/init-mongo.js" ]; then
-        mkdir -p scripts
-        cat > scripts/init-mongo.js << 'EOF'
-// MongoDB initialization script for Heart Disease ML Pipeline
-
-// Switch to healthcare database
-db = db.getSiblingDB('healthcare');
-
-// Create collections for medallion architecture
-db.createCollection('heart_disease_bronze');
-db.createCollection('heart_disease_silver');
-db.createCollection('heart_disease_gold');
-
-// Create indexes for better performance
-db.heart_disease_bronze.createIndex({ "created_at": 1 });
-db.heart_disease_silver.createIndex({ "patient_id": 1 });
-db.heart_disease_gold.createIndex({ "patient_id": 1 });
-
-print('Heart Disease ML Pipeline database initialized successfully!');
-print('Collections created: heart_disease_bronze, heart_disease_silver, heart_disease_gold');
-EOF
-        print_success "MongoDB initialization script created"
-    else
-        print_success "MongoDB initialization script already exists"
-    fi
 }
 
 # Function to show service status
@@ -181,13 +160,6 @@ run_tests() {
         print_success "API is healthy"
     else
         print_warning "API health check failed"
-    fi
-    
-    print_status "Checking database health..."
-    if curl -f http://localhost:8000/api/v1/db-health > /dev/null 2>&1; then
-        print_success "Database is healthy"
-    else
-        print_warning "Database health check failed"
     fi
 }
 
@@ -254,6 +226,8 @@ main() {
     local command=${1:-"start"}
     
     echo "=== Heart Disease ML API - Local Development ==="
+    echo "Working from: $PROJECT_ROOT"
+    echo "Docker Compose file: $COMPOSE_FILE"
     echo
     
     case $command in
@@ -262,9 +236,10 @@ main() {
             check_docker_compose
             setup_env
             create_directories
-            create_mongo_init
+            # Removed create_mongo_init - not needed!
             
             print_status "Starting services..."
+            cd "$PROJECT_ROOT"  # Ensure we're in project root
             $COMPOSE_CMD up -d --build
             
             print_success "Services started successfully!"
@@ -274,7 +249,7 @@ main() {
             run_tests
             
             echo
-            print_success "🚀 Development environment is ready!"
+            print_success "Development environment is ready!"
             echo
             echo "Next steps:"
             echo "1. Visit http://localhost:8000/docs for API documentation"
@@ -290,6 +265,7 @@ main() {
         "restart")
             check_docker_compose
             print_status "Restarting services..."
+            cd "$PROJECT_ROOT"
             $COMPOSE_CMD restart
             print_success "Services restarted"
             show_status

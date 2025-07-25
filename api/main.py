@@ -3,18 +3,29 @@ FastAPI application for Heart Disease Prediction
 Main entry point for the REST API
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent # or else it can't find packages
+sys.path.insert(0, str(project_root))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import os
 from dotenv import load_dotenv
-from config.logging import setup_logging
 import logging
+
+# Now we can import from config
+from config.logging import setup_logging
 
 # Import route modules
 from api.routes import health, prediction
-from api.services.model_service import MLModelService
-from api.services.database_service import DatabaseService
+# from api.services.model_service import MLModelService
+# from api.services.database_service import DatabaseService
+
+from api.dependencies import set_model_service, set_database_service
 
 # Load environment variables
 load_dotenv()
@@ -24,33 +35,33 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Global services
-model_service = None
-database_service = None
+# model_service = None
+# database_service = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    global model_service, database_service
-    
-    # Startup
+    from api.services.model_service import MLModelService
+    from api.services.database_service import DatabaseService
+
     logger.info("Starting Heart Disease Prediction API...")
-    
-    # Initialize services
-    database_service = DatabaseService()
-    await database_service.connect()
-    
-    model_service = MLModelService()
-    await model_service.load_model()
-    
+
+    # Create instances
+    db_service = DatabaseService()
+    await db_service.connect()
+    set_database_service(db_service)
+
+    ml_service = MLModelService()
+    await ml_service.load_model()
+    set_model_service(ml_service)
+
     logger.info("API startup complete!")
-    
+
     yield
-    
-    # Shutdown
+
     logger.info("Shutting down API...")
-    if database_service:
-        await database_service.disconnect()
+    await db_service.disconnect()
     logger.info("API shutdown complete!")
 
 
@@ -89,13 +100,13 @@ async def root():
     }
 
 
-# Make services available to routes
-def get_model_service() -> MLModelService:
-    return model_service
+# # Make services available to routes
+# def get_model_service() -> MLModelService:
+#     return model_service
 
 
-def get_database_service() -> DatabaseService:
-    return database_service
+# def get_database_service() -> DatabaseService:
+#     return database_service
 
 
 if __name__ == "__main__":

@@ -1,23 +1,27 @@
 """
-Pydantic routes for heart disease prediction API
-Defines endpoints for prediction from the models
+Prediction routes for heart disease prediction API
+Fixed to use real model predictions
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime
+import logging
+from config.logging import setup_logging
+
+from api.models.prediction import PredictionResponse, PatientData
+from api.dependencies import get_model_service
 from api.services.model_service import MLModelService
-from api.main import get_model_service
-from api.models.prediction import PredictionRequest, PredictionResponse, PatientData
+
+# Setup logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.post("/predict", response_model=PredictionResponse)
-async def predict_heart_disease(
-    patient_data: PatientData,
-    model_service: ModelService = Depends(get_model_service)
-):
+async def predict_heart_disease(patient_data: PatientData, model_service: MLModelService = Depends(get_model_service)):
     """
-    Predict heart disease risk for a patient
+    Predict heart disease risk for a patient using trained ML model
     
     **Input**: Patient data including age, sex, chest pain type, etc.
     **Output**: Prediction (0/1), probability, confidence level, and risk factors
@@ -27,37 +31,45 @@ async def predict_heart_disease(
     {
         "age": 55,
         "sex": 1,
-        "cp": 0,
-        "trestbps": 140,
-        "chol": 200,
+        "cp": 3,
+        "trestbps": 130,
+        "chol": 250,
         "fbs": 0,
-        "restecg": 1,
-        "thalach": 150,
-        "exang": 0,
+        "restecg": 0,
+        "thalach": 140,
+        "exang": 1,
         "oldpeak": 1.5,
         "slope": 1,
-        "ca": 0,
-        "thal": 2
+        "ca": 1,
+        "thal": 0
     }
     ```
     """
     try:
-        # Log incoming request
         logger.info(f"Received prediction request for patient: age={patient_data.age}, sex={patient_data.sex}")
         
-        # Check if model is loaded
-        if not model_service or not model_service.is_loaded():
-            logger.error("Model service not available or model not loaded")
+        # Check if model service is available
+        if not model_service:
+            logger.error("Model service not available")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="ML model is not available. Please try again later."
+                detail="ML model service is not available. Please try again later."
             )
         
-        # Convert patient data to prediction format
-        prediction_result = await model_service.predict(patient_data)
+        # Check if model is loaded
+        if not model_service.model:
+            logger.error("Model not loaded")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="ML model is not loaded. Please try again later."
+            )
+        
+        # Make prediction using real model
+        prediction_result = await model_service.predict(patient_data.dict())
         
         # Log successful prediction
-        logger.info(f"Prediction successful: {prediction_result['prediction']} (probability: {prediction_result['probability']:.3f})")
+        logger.info(f"Prediction successful: {prediction_result['prediction']} "
+                   f"(probability: {prediction_result['probability']:.3f})")
         
         # Return structured response
         return PredictionResponse(
@@ -66,11 +78,10 @@ async def predict_heart_disease(
             confidence=prediction_result["confidence"],
             risk_factors=prediction_result.get("risk_factors", []),
             timestamp=datetime.utcnow(),
-            model_version=model_service.version
+            model_version="1.0.0"
         )
         
     except ValueError as ve:
-        # Handle validation errors
         logger.warning(f"Validation error in prediction: {str(ve)}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -78,26 +89,23 @@ async def predict_heart_disease(
         )
         
     except Exception as e:
-        # Handle unexpected errors
         logger.error(f"Unexpected error during prediction: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your prediction request"
         )
 
-
-# dummy endpoint for testing
+# Keep dummy endpoint for testing/debugging
 @router.post("/dummy-predict")
 async def dummy_predict_heart_disease(patient_data: PatientData):
     """
-    Simple prediction endpoint
-    
-    Input: Patient data (age, sex, chol, etc.)
-    Output: Prediction result
+    Simple dummy prediction endpoint for testing
+    NOTE: This uses fake logic, not the real ML model
     """
     try:
-        logger.info(f"Got prediction request for patient age: {patient_data.age}")
+        logger.info(f"Got DUMMY prediction request for patient age: {patient_data.age}")
         
+        # DUMMY LOGIC - NOT REAL PREDICTION
         risk_score = (patient_data.age * 0.01 + 
                      patient_data.chol * 0.001 + 
                      patient_data.trestbps * 0.002)
@@ -109,13 +117,11 @@ async def dummy_predict_heart_disease(patient_data: PatientData):
             prediction=prediction,
             probability=probability,
             confidence="medium",
-            model_version="1.0.0",
-            timestamp=datetime.now(),
-            risk_factors=["age", "cholesterol", "blood pressure"]
+            model_version="dummy-1.0.0",
+            timestamp=datetime.utcnow(),
+            risk_factors=["dummy_age", "dummy_cholesterol", "dummy_blood_pressure"]
         )
         
     except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Prediction failed")
-
-
+        logger.error(f"Dummy prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Dummy prediction failed")

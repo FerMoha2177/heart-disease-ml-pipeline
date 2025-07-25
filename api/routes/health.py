@@ -1,95 +1,103 @@
 """
 Health check endpoints for monitoring API and database status
 """
-
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime
-from api.models.health import HealthResponse, DatabaseHealthResponse
+import logging
+from config.logging import setup_logging
+setup_logging()
+
+from api.dependencies import get_model_service, get_database_service
+from api.services.model_service import MLModelService
 from api.services.database_service import DatabaseService
-from api.main import get_database_service
+
+
+
+# Remove circular import - we'll get services via dependency injection
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health")
 async def health_check():
     """
-    Basic health check endpoint
-    Returns API status and timestamp
+    Basic health check endpoint - REQUIRED BY ASSESSMENT
+    Returns 200 OK if API is running
     """
-    return HealthResponse(
-        status="healthy",
-        message="Heart Disease Prediction API is running",
-        timestamp=datetime.utcnow(),
-        version="1.0.0"
-    )
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "message": "Heart Disease Prediction API is running"
+    }
 
-
-@router.get("/db-health", response_model=DatabaseHealthResponse)
-async def database_health_check(
-    db_service: DatabaseService = Depends(get_database_service)
+@router.get("/health/detailed")
+async def detailed_health_check(
+    model_service: MLModelService = Depends(get_model_service),
+    database_service: DatabaseService = Depends(get_database_service)
 ):
     """
-    Database health check endpoint
-    Tests MongoDB connection and collection access
+    Detailed health check including model and database status
     """
     try:
-        # Test database connection
-        db_status = await db_service.health_check()
+        health_info = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "services": {}
+        }
         
-        if db_status["connected"]:
-            return DatabaseHealthResponse(
-                status="healthy",
-                message="Database connection successful",
-                timestamp=datetime.now(datetime.timezone.utc),
-                database_name=db_status["database"],
-                collections_count=db_status["collections_count"],
-                connection_status="connected"
-            )
+        # Check model service
+        if model_service:
+            model_health = model_service.health_check()
+            health_info["services"]["model"] = model_health
         else:
-            return DatabaseHealthResponse(
-                status="unhealthy",
-                message="Database connection failed",
-                timestamp=datetime.now(datetime.timezone.utc),
-                database_name="unknown",
-                collections_count=0,
-                connection_status="disconnected"
-            )
+            health_info["services"]["model"] = {
+                "status": "unavailable",
+                "error": "Model service not initialized"
+            }
+        
+        # Check database service  
+        if database_service:
+            db_health = await database_service.health_check()
+            health_info["services"]["database"] = db_health
+        else:
+            health_info["services"]["database"] = {
+                "status": "unavailable", 
+                "error": "Database service not initialized"
+            }
+        
+        # Determine overall status
+        model_ok = health_info["services"]["model"].get("status") == "healthy"
+        db_ok = health_info["services"]["database"].get("connected", False)
+        
+        if not model_ok or not db_ok:
+            health_info["status"] = "degraded"
+            health_info["issues"] = []
             
+            if not model_ok:
+                health_info["issues"].append("ML model not loaded")
+            if not db_ok:
+                health_info["issues"].append("Database connection issues")
+        
+        return health_info
+        
     except Exception as e:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Database health check failed: {str(e)}"
-        )
+        logger.error(f"Health check error: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
 
-
-@router.get("/model-health")
-async def model_health_check():
+@router.get("/model-info")
+async def get_model_info(model_service: MLModelService = Depends(get_model_service)):
     """
-    Model health check endpoint
-    Verifies that the ML model is loaded and ready
+    Get detailed information about the loaded model
     """
     try:
-        from api.main import get_model_service
-        model_service = get_model_service()
+        if not model_service:
+            raise HTTPException(status_code=503, detail="Model service not available")
         
-        if model_service and model_service.is_loaded():
-            return {
-                "status": "healthy",
-                "message": "ML model is loaded and ready",
-                "timestamp": datetime.now(datetime.timezone.utc),
-                "model_version": getattr(model_service, 'version', '1.0.0'),
-                "model_type": getattr(model_service, 'model_type', 'classification')
-            }
-        else:
-            return {
-                "status": "unhealthy",
-                "message": "ML model is not loaded",
-                "timestamp": datetime.now(datetime.timezone.utc)
-            }
-            
+        return model_service.get_model_info()
+        
     except Exception as e:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Model health check failed: {str(e)}"
-        )
+        logger.error(f"Error getting model info: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Could not retrieve model info: {str(e)}")
