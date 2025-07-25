@@ -86,11 +86,6 @@ async def predict_heart_disease(
         )
 
 
-
-
-
-
-
 # dummy endpoint for testing
 @router.post("/dummy-predict")
 async def dummy_predict_heart_disease(patient_data: PatientData):
@@ -101,12 +96,8 @@ async def dummy_predict_heart_disease(patient_data: PatientData):
     Output: Prediction result
     """
     try:
-        # For now, just return a dummy response
-        # Later you'll replace this with actual model prediction
-        
         logger.info(f"Got prediction request for patient age: {patient_data.age}")
         
-        # Dummy logic - replace with model prediction
         risk_score = (patient_data.age * 0.01 + 
                      patient_data.chol * 0.001 + 
                      patient_data.trestbps * 0.002)

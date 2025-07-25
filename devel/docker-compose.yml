@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # MongoDB Service
+  mongodb:
+    image: mongo:7.0
+    container_name: heart_disease_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: healthcare
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - heart_disease_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: heart_disease_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_CONNECTION_STRING=mongodb://admin:admin123@mongodb:27017/healthcare?authSource=admin
+      - MONGODB_DATABASE_NAME=healthcare
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - MODEL_PATH=models/heart_disease_model.pkl
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - heart_disease_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MongoDB Express (Web UI for MongoDB - Optional)
+  mongo-express:
+    image: mongo-express:1.0.0-alpha
+    container_name: heart_disease_mongo_express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - heart_disease_network
+
+  # Jupyter Notebook Service (for development)
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: heart_disease_jupyter
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - MONGODB_CONNECTION_STRING=mongodb://admin:admin123@mongodb:27017/healthcare?authSource=admin
+      - MONGODB_DATABASE_NAME=healthcare
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src:/app/src
+    command: >
+      bash -c "
+        pip install jupyter jupyterlab &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+      "
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - heart_disease_network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  heart_disease_network:
+    driver: bridge

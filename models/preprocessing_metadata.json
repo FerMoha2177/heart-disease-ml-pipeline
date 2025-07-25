@@ -1,0 +1,147 @@
+{
+  "pipeline_version": "1.0.0",
+  "created_at": "2025-07-25T12:28:58.899026",
+  "gold_layer_shape": [
+    19320,
+    17
+  ],
+  "final_feature_count": 16,
+  "complete_transformation_steps": [
+    "Step 1: Handle missing values (median for numeric, mode for categorical)",
+    "Step 2: Handle impossible zeros (convert to NaN then impute)",
+    "Step 3: Convert categorical strings to numeric (label encoding)",
+    "Step 4: Apply binary label encoding",
+    "Step 5: Apply one-hot encoding for multi-class categories",
+    "Step 6: Apply MinMax scaling to numerical features",
+    "Step 7: Apply convergent feature selection (SelectKBest + RandomForest)",
+    "Step 8: Final column ordering for model input"
+  ],
+  "transformation_details": {
+    "missing_value_imputation": {
+      "numerical_strategy": "median",
+      "categorical_strategy": "mode",
+      "impossible_zero_handling": "convert_to_nan_then_impute"
+    },
+    "categorical_encoding": {
+      "binary_method": "label_encoding",
+      "multiclass_method": "one_hot_encoding",
+      "categorical_features": [
+        "sex",
+        "fbs",
+        "exang"
+      ]
+    },
+    "scaling": {
+      "method": "MinMaxScaler",
+      "numerical_features": [
+        "age",
+        "sex",
+        "trestbps",
+        "chol",
+        "fbs",
+        "thalch",
+        "exang",
+        "oldpeak",
+        "cp_asymptomatic",
+        "cp_atypical angina",
+        "cp_non-anginal",
+        "restecg_normal",
+        "restecg_st-t abnormality",
+        "slope_flat",
+        "slope_not_tested",
+        "slope_upsloping"
+      ],
+      "fitted_on_gold_data": true
+    },
+    "feature_selection": {
+      "method": "convergent_selection",
+      "selectkbest_k": 15,
+      "random_forest_k": 15,
+      "protected_features": [
+        "age",
+        "sex"
+      ],
+      "original_count": 19,
+      "selected_count": 16,
+      "removed_count": 3
+    }
+  },
+  "api_input_format": {
+    "accepts": [
+      "numeric_encoded",
+      "string_categories",
+      "mixed"
+    ],
+    "expected_raw_features": [
+      "age",
+      "sex",
+      "cp",
+      "trestbps",
+      "chol",
+      "fbs",
+      "restecg",
+      "thalach",
+      "exang",
+      "oldpeak",
+      "slope",
+      "ca",
+      "thal"
+    ],
+    "final_features": [
+      "age",
+      "sex",
+      "trestbps",
+      "chol",
+      "fbs",
+      "thalch",
+      "exang",
+      "oldpeak",
+      "cp_asymptomatic",
+      "cp_atypical angina",
+      "cp_non-anginal",
+      "restecg_normal",
+      "restecg_st-t abnormality",
+      "slope_flat",
+      "slope_not_tested",
+      "slope_upsloping"
+    ],
+    "output_shape": 16
+  },
+  "validation_ranges": {
+    "age": {
+      "min": 1,
+      "max": 120
+    },
+    "trestbps": {
+      "min": 80,
+      "max": 250
+    },
+    "chol": {
+      "min": 100,
+      "max": 600
+    },
+    "thalach": {
+      "min": 60,
+      "max": 220
+    },
+    "oldpeak": {
+      "min": 0.0,
+      "max": 10.0
+    },
+    "ca": {
+      "min": 0,
+      "max": 4
+    }
+  },
+  "data_summary": {
+    "training_samples": 19320,
+    "target_distribution": {
+      "1": 10689,
+      "0": 8631
+    },
+    "feature_types": {
+      "numerical": 16,
+      "categorical": 3
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "numeric_format_example": {
+    "age": 55,
+    "sex": 1,
+    "cp": 3,
+    "trestbps": 130,
+    "chol": 250,
+    "fbs": 0,
+    "restecg": 0,
+    "thalach": 140,
+    "exang": 1,
+    "oldpeak": 1.5,
+    "slope": 1,
+    "ca": 1,
+    "thal": 0
+  },
+  "string_format_example": {
+    "age": 55,
+    "sex": "male",
+    "cp": "asymptomatic",
+    "trestbps": 130,
+    "chol": 250,
+    "fbs": "false",
+    "restecg": "normal",
+    "thalach": 140,
+    "exang": "yes",
+    "oldpeak": 1.5,
+    "slope": "flat",
+    "ca": 1,
+    "thal": "normal"
+  },
+  "test_cases": [
+    {
+      "name": "high_risk_patient",
+      "data": {
+        "age": 67,
+        "sex": "male",
+        "cp": "asymptomatic",
+        "trestbps": 160,
+        "chol": 286,
+        "fbs": "true",
+        "restecg": "LV hypertrophy",
+        "thalach": 108,
+        "exang": "yes",
+        "oldpeak": 1.5,
+        "slope": "flat",
+        "ca": 3,
+        "thal": "normal"
+      }
+    },
+    {
+      "name": "low_risk_patient",
+      "data": {
+        "age": 29,
+        "sex": "female",
+        "cp": "non_anginal_pain",
+        "trestbps": 130,
+        "chol": 204,
+        "fbs": "false",
+        "restecg": "normal",
+        "thalach": 202,
+        "exang": "no",
+        "oldpeak": 0.0,
+        "slope": "upsloping",
+        "ca": 0,
+        "thal": "normal"
+      }
+    }
+  ]
+}
