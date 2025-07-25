@@ -2,8 +2,8 @@ services:
   - type: web
     name: heart-disease-ml-api
     env: python
-    buildCommand: "./deployment/build.sh"
-    startCommand: "./deployment/startup.sh"
+    buildCommand: "./build.sh"
+    startCommand: "./startup.sh"
     plan: free
     
     # Environment variables
