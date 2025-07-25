@@ -74,10 +74,10 @@ def hyperparameter_tuning(model, X, y, param_grid, cv=5, n_jobs=-1):
         raise
 
 def remove_old_models():
-    """Remove old models"""
+    """Remove tuned model files, keep metadata and preprocessing artifacts"""
     try:
         for file in os.listdir("../models"):
-            if file.endswith(".joblib") or file.endswith(".pkl"):
+            if file.endswith("_tuned.joblib"):
                 logger.info(f"Removing old model: {file}")
                 os.remove(os.path.join("../models", file))
     except Exception as e:
