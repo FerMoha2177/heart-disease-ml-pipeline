@@ -28,6 +28,8 @@ class MLModelService:
         self.version = os.getenv("MODEL_VERSION", "1.0.0")
         self.model_type = "classification"
         self.loaded_at = None
+
+        self.preprocessing_service = None
         
         # Expected feature order (from your Gold layer)
         self.expected_features = [
@@ -40,7 +42,14 @@ class MLModelService:
         Load the trained ML model from disk
         """
         try:
+            from api.dependencies import get_preprocessing_service  
+
             # Check if model file exists
+            self.preprocessing_service = get_preprocessing_service()
+            if not self.preprocessing_service.is_loaded:
+                logger.error("Preprocessing service failed to load")
+                return False
+            
             if not os.path.exists(self.model_path):
                 logger.error(f"Model file not found at {self.model_path}")
                 
@@ -104,100 +113,115 @@ class MLModelService:
             if not self.model:
                 raise ValueError("Model is not loaded")
             
-            logger.debug(f"Making prediction for patient data: {patient_data}")
+            if not self.preprocessing_service or not self.preprocessing_service.is_loaded:
+                raise ValueError("Preprocessing service is not ready")
             
-            # Convert patient data to DataFrame with correct feature order
-            df = pd.DataFrame([patient_data])
-            
-            # Ensure all expected features are present and in correct order
-            for feature in self.expected_features:
-                if feature not in df.columns:
-                    logger.warning(f"Missing feature '{feature}', setting to 0")
-                    df[feature] = 0
-            
-            # Reorder columns to match training data
-            df = df[self.expected_features]
-            
-            logger.debug(f"Input shape for model: {df.shape}")
-            logger.debug(f"Feature values: {df.iloc[0].to_dict()}")
+            # Apply complete preprocessing pipeline
+            processed_data = self.preprocessing_service.preprocess_for_prediction(patient_data)
             
             # Make prediction
-            prediction = self.model.predict(df)[0]
-            prediction_proba = self.model.predict_proba(df)[0]
+            prediction = self.model.predict(processed_data)[0]
+            probability = self.model.predict_proba(processed_data)[0]
             
-            # Get probability of heart disease (class 1)
-            heart_disease_probability = prediction_proba[1] if len(prediction_proba) > 1 else prediction_proba[0]
+            # Determine confidence
+            max_prob = max(probability)
+            confidence = "high" if max_prob > 0.8 else "medium" if max_prob > 0.6 else "low"
             
-            # Determine confidence level
-            max_prob = max(prediction_proba)
-            if max_prob > 0.8:
-                confidence = "high"
-            elif max_prob > 0.6:
-                confidence = "medium"  
-            else:
-                confidence = "low"
-            
-            # Identify risk factors
+            # Extract risk factors (basic implementation)
             risk_factors = self._identify_risk_factors(patient_data, prediction)
             
-            result = {
+            return {
                 "prediction": int(prediction),
-                "probability": float(heart_disease_probability),
+                "probability": float(probability[1]),  # Probability of heart disease
                 "confidence": confidence,
-                "risk_factors": risk_factors
+                "risk_factors": risk_factors,
+                "model_version": self.version
             }
-            
-            logger.info(f"Prediction result: {result}")
-            return result
             
         except Exception as e:
             logger.error(f"Prediction error: {str(e)}")
             raise ValueError(f"Prediction failed: {str(e)}")
+        # try:
+        #     if not self.model:
+        #         raise ValueError("Model is not loaded")
+            
+        #     logger.debug(f"Making prediction for patient data: {patient_data}")
+            
+        #     # Convert patient data to DataFrame with correct feature order
+        #     df = pd.DataFrame([patient_data])
+            
+        #     # Ensure all expected features are present and in correct order
+        #     for feature in self.expected_features:
+        #         if feature not in df.columns:
+        #             logger.warning(f"Missing feature '{feature}', setting to 0")
+        #             df[feature] = 0
+            
+        #     # Reorder columns to match training data
+        #     df = df[self.expected_features]
+            
+        #     logger.debug(f"Input shape for model: {df.shape}")
+        #     logger.debug(f"Feature values: {df.iloc[0].to_dict()}")
+            
+        #     # Make prediction
+        #     prediction = self.model.predict(df)[0]
+        #     prediction_proba = self.model.predict_proba(df)[0]
+            
+        #     # Get probability of heart disease (class 1)
+        #     heart_disease_probability = prediction_proba[1] if len(prediction_proba) > 1 else prediction_proba[0]
+            
+        #     # Determine confidence level
+        #     max_prob = max(prediction_proba)
+        #     if max_prob > 0.8:
+        #         confidence = "high"
+        #     elif max_prob > 0.6:
+        #         confidence = "medium"  
+        #     else:
+        #         confidence = "low"
+            
+        #     # Identify risk factors
+        #     risk_factors = self._identify_risk_factors(patient_data, prediction)
+            
+        #     result = {
+        #         "prediction": int(prediction),
+        #         "probability": float(heart_disease_probability),
+        #         "confidence": confidence,
+        #         "risk_factors": risk_factors
+        #     }
+            
+        #     logger.info(f"Prediction result: {result}")
+        #     return result
+            
+        # except Exception as e:
+        #     logger.error(f"Prediction error: {str(e)}")
+        #     raise ValueError(f"Prediction failed: {str(e)}")
     
-    def _identify_risk_factors(self, patient_data: Dict[str, Any], prediction: int) -> List[str]:
-        """
-        Identify risk factors based on patient data and prediction
-        """
+    def _identify_risk_factors(self, patient_data: Dict[str, Any], prediction: int) -> list:
+        """Basic risk factor identification"""
         risk_factors = []
         
-        try:
-            # Only identify risk factors if heart disease is predicted
-            if prediction == 1:
-                # Age risk
-                if patient_data.get('age', 0) > 55:
-                    risk_factors.append("advanced_age")
-                
-                # Cholesterol risk
-                if patient_data.get('chol', 0) > 240:
-                    risk_factors.append("high_cholesterol")
-                
-                # Blood pressure risk
-                if patient_data.get('trestbps', 0) > 140:
-                    risk_factors.append("high_blood_pressure")
-                
-                # Gender risk (males have higher risk)
-                if patient_data.get('sex', 0) == 1:
-                    risk_factors.append("male_gender")
-                
-                # Exercise induced angina
-                if patient_data.get('exang', 0) == 1:
-                    risk_factors.append("exercise_induced_angina")
-                
-                # Chest pain type (asymptomatic is highest risk)
-                if patient_data.get('cp', 0) == 3:
-                    risk_factors.append("asymptomatic_chest_pain")
-                
-                # Fasting blood sugar
-                if patient_data.get('fbs', 0) == 1:
-                    risk_factors.append("high_fasting_blood_sugar")
-                
-                # Low maximum heart rate achieved
-                if patient_data.get('thalach', 200) < 120:
-                    risk_factors.append("low_max_heart_rate")
-                
-        except Exception as e:
-            logger.warning(f"Error identifying risk factors: {e}")
-            risk_factors = ["analysis_error"]
+        if prediction == 1:  # Heart disease predicted
+            # Check for common risk factors
+            if patient_data.get('age', 0) > 55:
+                risk_factors.append("advanced_age")
+            
+            if patient_data.get('chol', 0) > 240:
+                risk_factors.append("high_cholesterol")
+            
+            if patient_data.get('trestbps', 0) > 140:
+                risk_factors.append("high_blood_pressure")
+            
+            # Handle both string and numeric formats
+            sex = patient_data.get('sex', 0)
+            if sex in ['male', 'Male', 'M', 1]:
+                risk_factors.append("male_gender")
+            
+            exang = patient_data.get('exang', 0)
+            if exang in ['yes', 'Yes', 'true', 'True', 1]:
+                risk_factors.append("exercise_induced_angina")
+            
+            cp = patient_data.get('cp', 0)
+            if cp in ['asymptomatic', 3]:
+                risk_factors.append("asymptomatic_chest_pain")
         
         return risk_factors
     
@@ -212,7 +236,8 @@ class MLModelService:
             "version": self.version,
             "loaded_at": self.loaded_at.isoformat() if self.loaded_at else None,
             "expected_features": self.expected_features,
-            "feature_count": len(self.expected_features)
+            "feature_count": len(self.expected_features),
+            "preprocessing_status": self.preprocessing_service.get_preprocessing_info() if self.preprocessing_service else None
         }
     
     def health_check(self) -> Dict[str, Any]:

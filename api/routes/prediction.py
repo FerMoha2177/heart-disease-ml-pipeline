@@ -48,7 +48,7 @@ async def predict_heart_disease(patient_data: PatientData, model_service: MLMode
     try:
         logger.info(f"Received prediction request for patient: age={patient_data.age}, sex={patient_data.sex}")
         
-        # Check if model service is available
+       # Check if model service is available
         if not model_service:
             logger.error("Model service not available")
             raise HTTPException(
@@ -63,6 +63,14 @@ async def predict_heart_disease(patient_data: PatientData, model_service: MLMode
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="ML model is not loaded. Please try again later."
             )
+        
+        # Check if preprocessing service is available
+        # if not model_service.preprocessing_service:
+        #     logger.error("Preprocessing service not available")
+        #     raise HTTPException(
+        #         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        #         detail="Preprocessing service is not available. Please try again later."
+        #     )
         
         # Make prediction using real model
         prediction_result = await model_service.predict(patient_data.dict())
