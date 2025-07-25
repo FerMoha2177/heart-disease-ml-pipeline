@@ -15,20 +15,20 @@
         "cp_asymptomatic",
         "cp_atypical angina",
         "cp_non-anginal",
+        "cp_typical angina",
         "restecg_normal",
-        "restecg_st-t abnormality",
-        "slope_downsloping",
         "slope_flat",
-        "slope_not_tested"
+        "slope_not_tested",
+        "slope_upsloping"
     ],
     "target": "target",
     "metrics": {
-        "accuracy": 0.7989130434782609,
-        "precision": 0.8037383177570093,
-        "recall": 0.8431372549019608,
-        "f1_score": 0.8229665071770335,
-        "roc_auc": 0.907819225251076
+        "accuracy": 0.9619565217391305,
+        "precision": 0.9797979797979798,
+        "recall": 0.9509803921568627,
+        "f1_score": 0.9651741293532337,
+        "roc_auc": 0.9799736967957915
     },
-    "training_data_size": 736,
-    "test_data_size": 184
+    "training_data_size": 1472,
+    "test_data_size": 368
 }

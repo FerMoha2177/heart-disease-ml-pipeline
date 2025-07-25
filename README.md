@@ -98,8 +98,10 @@ heart-disease-ml-pipeline/
 # API returns:
 {
     "prediction": 1,
-    "probability": 0.75,
-    "confidence": "high",
+    "probability": 0.5160617843607056,
+    "confidence": "low",
+    "risk_factors": [],
+    "timestamp": "2025-07-25T20:58:26.904452",
     "model_version": "1.0.0"
 }
 ```
@@ -147,23 +149,42 @@ heart-disease-ml-pipeline/
 
 # Model Development & Justification
 
+## Model Saving & Metadata
+After evaluation, only the best-performing model (Random Forest) is saved to disk as the production model (`heart_disease_classifier.joblib`). All other models are cleared. Alongside the model, a `model_metadata.json` file is generated containing:
+- Model name and version
+- Training date
+- Algorithm type
+- Feature list
+- Target variable
+- All evaluation metrics (accuracy, precision, recall, F1, ROC-AUC)
+- Training/test data sizes
+
+This metadata ensures transparency, reproducibility, and traceability for future deployments and audits.
+
+
 ## Models Evaluated
-Trained and compared 5 classification models using 80/20 train-test split:
+Trained and compared 8 classification models using an 80/20 train-test split. Hyperparameter tuning was performed using parameter grid search (GridSearchCV) for each model to optimize performance.
 
 | Model              | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
-|--------------------|----------|-----------|--------|----------|---------|
-| RandomForest       | 0.7989   | 0.8037    | 0.8431 | 0.8230   | 0.9078  |
-| SVM                | 0.8152   | 0.8148    | 0.8627 | 0.8381   | 0.8916  |
-| LogisticRegression | 0.8043   | 0.8056    | 0.8529 | 0.8286   | 0.8969  |
-| XGBoost            | 0.8098   | 0.8190    | 0.8431 | 0.8309   | 0.8736  |
-| DecisionTree       | 0.7772   | 0.8081    | 0.7843 | 0.7960   | 0.8117  |
+|-------------------------|----------|-----------|--------|----------|---------|
+| SVM                    | 0.8125   | 0.8054    | 0.8725 | 0.8376   | 0.8946  |
+| AdaBoost               | 0.8342   | 0.8705    | 0.8235 | 0.8463   | 0.9040  |
+| DecisionTree           | 0.9565   | 0.9700    | 0.9510 | 0.9604   | 0.9572  |
+| RandomForest           | 0.9620   | 0.9798    | 0.9510 | 0.9652   | 0.9800  |
+| Naive Bayes            | 0.8098   | 0.8454    | 0.8039 | 0.8241   | 0.8950  |
+| Gradient Boosting      | 0.9620   | 0.9612    | 0.9706 | 0.9659   | 0.9778  |
+| LogisticRegression     | 0.8098   | 0.8252    | 0.8333 | 0.8293   | 0.8940  |
+| XGBoost                | 0.9457   | 0.9510    | 0.9510 | 0.9510   | 0.9782  |
+
+**Note:** Each model was tuned using parameter grid search to ensure fair comparison.
+
 
 ### Final Model Choice: Random Forest
-**Justification:** Selected Random Forest based on highest ROC-AUC (0.9078), which is critical for medical screening applications where we need to distinguish between positive and negative cases across all probability thresholds.
+**Justification:** Random Forest was selected as the final production model based on the highest ROC-AUC (0.9800) and strong overall performance across all metrics. In medical screening, ROC-AUC is critical for distinguishing between positive and negative cases at all probability thresholds. Random Forest also demonstrated high recall (95.10%), which is important for catching true heart disease cases, and proved robust to overfitting.
 
 #### Key Advantages:
-- Best ROC-AUC performance (90.78%)
-- High recall (84.31%) - important for catching true heart disease cases
+- Best ROC-AUC performance (98.00%)
+- High recall (95.10%) and F1-Score (96.52%)
 - Robust to overfitting
 - Handles feature interactions well
 - Provides feature importance scores
@@ -195,32 +216,38 @@ Trained and compared 5 classification models using 80/20 train-test split:
 
 ### 2. Heart Disease Prediction
 - **POST /api/v1/predict**
+- **What It Does:**
+  This is the core functionality of the API – it takes patient medical data and returns a heart disease risk prediction.
+- **HTTP Method:** POST (send data to the server)
+- **URL:** `/api/v1/predict`
 - **Content-Type:** application/json
-- **Request Body:**
+
+#### Input Data (Request Body):
 ```json
 {
-  "age": 55,
-  "sex": 1,
-  "cp": 3,
-  "trestbps": 130,
-  "chol": 250,
-  "fbs": 0,
-  "restecg": 0,
-  "thalach": 140,
-  "exang": 1,
-  "oldpeak": 1.5,
-  "slope": 1,
-  "ca": 1,
-  "thal": 0
+  "age": 55,           // Patient's age in years
+  "sex": 1,            // Gender: 1=male, 0=female  
+  "cp": 3,             // Chest pain type (0-3, see below)
+  "trestbps": 130,     // Resting blood pressure (mm Hg)
+  "chol": 250,         // Cholesterol level (mg/dl)
+  "fbs": 0,            // Fasting blood sugar >120 mg/dl (1=yes, 0=no)
+  "restecg": 0,        // Resting ECG results (0-2, see below)
+  "thalach": 140,      // Maximum heart rate achieved
+  "exang": 1,          // Exercise induced angina (1=yes, 0=no)
+  "oldpeak": 1.5,      // ST depression from exercise
+  "slope": 1,          // Slope of peak exercise ST segment (0-2)
+  "ca": 1,             // Number of major vessels (0-3)
+  "thal": 0            // Thalassemia type (0-2)
 }
 ```
-- **Response:**
+
+#### Response Structure:
 ```json
 {
-  "prediction": 1,
-  "probability": 0.7287551044386565,
-  "confidence": "medium",
-  "risk_factors": [
+  "prediction": 1,                    // 0=no heart disease, 1=heart disease
+  "probability": 0.7287551044386565,  // Probability of heart disease (0-1)
+  "confidence": "medium",             // low/medium/high based on probability
+  "risk_factors": [                   // Identified risk factors
     "advanced_age",
     "high_cholesterol", 
     "high_blood_pressure",
@@ -232,6 +259,50 @@ Trained and compared 5 classification models using 80/20 train-test split:
   "model_version": "1.0.0"
 }
 ```
+
+#### Field Explanations
+- **prediction:** 0 = no heart disease, 1 = heart disease
+- **probability:** Probability of heart disease (0-1)
+- **confidence:**
+  - High: probability > 0.8 (>80%)
+  - Medium: probability 0.6-0.8 (60-80%)
+  - Low: probability < 0.6 (<60%)
+- **risk_factors:** List of identified risk factors
+- **timestamp:** Time of prediction
+- **model_version:** Model version used
+
+##### Chest Pain Type (`cp`):
+- 0 = Typical angina (classic heart-related chest pain)
+- 1 = Atypical angina (not typical pattern)
+- 2 = Non-anginal pain (not heart-related)
+- 3 = Asymptomatic (no chest pain symptoms)
+
+##### Resting ECG (`restecg`):
+- 0 = Normal
+- 1 = ST-T wave abnormality
+- 2 = Left ventricular hypertrophy
+
+##### Slope (`slope`):
+- 0 = Upsloping (good)
+- 1 = Flat (concerning)
+- 2 = Downsloping (bad)
+
+#### How The Prediction Works
+1. **Input Validation:** API validates the incoming JSON.
+2. **Preprocessing:** Transforms raw values using the Bronze→Silver→Gold pipeline.
+3. **Model Prediction:** Random Forest model outputs probability.
+4. **Risk Assessment:** Identifies specific risk factors.
+5. **Response Formatting:** Returns structured prediction.
+
+#### Example Usage Scenarios
+- **Low Risk Patient (Young Female):**
+  - Input: `age=25, sex=0, normal values`
+  - Expected: `prediction=0, low probability`
+- **High Risk Patient (Older Male):**
+  - Input: `age=70, sex=1, multiple risk factors`
+  - Expected: `prediction=1, high probability, multiple risk_factors`
+
+> This endpoint is the main business value of your API – it takes real patient data and provides actionable medical insights!
 
 ## Feature Descriptions
 - **age:** Patient age (years)
@@ -294,7 +365,7 @@ heart-disease-ml-pipeline/
 ```
 
 # Deployment
-Deployed on Render at: [Update with actual URL]
+Deployed on Render at: https://heart-disease-prediction.onrender.com
 
 # Future Improvements
 - Enhanced preprocessing for categorical feature encoding

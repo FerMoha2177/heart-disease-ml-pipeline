@@ -7,6 +7,10 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
 from joblib import dump as dump_model
 from sklearn.model_selection import GridSearchCV
 import os
@@ -19,13 +23,18 @@ logger = logging.getLogger(__name__)
 
 def get_models(y_train):
     try:
+        # get models
         models = {
             'LogisticRegression'  : LogisticRegression(max_iter=1000),
             'RandomForest'        : RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced'),
             'XGBoost'             : XGBClassifier(objective='binary:logistic', n_estimators=100, learning_rate=0.1, random_state=42, scale_pos_weight=(len(y_train) - sum(y_train)) / sum(y_train)),
             'DecisionTree'        : DecisionTreeClassifier(max_depth=5, random_state=42, class_weight='balanced'),
+            'Naive Bayes'         : GaussianNB(),
+            'AdaBoost'            : AdaBoostClassifier(random_state=42),
+            'Gradient Boosting'   : GradientBoostingClassifier(random_state=42),
             'SVM'                 : SVC(kernel='rbf', C=1, gamma='scale', probability=True)
         }
+        logger.info("\nRetrieved models: {}".format(models.keys()))
         return models   
     except Exception as e:
         logger.error(f"Failed to get models: {str(e)}")
