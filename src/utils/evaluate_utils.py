@@ -18,17 +18,18 @@ import logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
+MODEL_DIR = "../models"
+
 
 # load model
 def load_trained_models():
     """Load all trained models from disk"""
     models = {}
-    model_dir = "../models"
     
-    for filename in os.listdir(model_dir):
+    for filename in os.listdir(MODEL_DIR):
         if filename.endswith("_tuned.joblib"):
             model_name = filename.replace("_tuned.joblib", "")
-            model_path = os.path.join(model_dir, filename)
+            model_path = os.path.join(MODEL_DIR, filename)
             
             try:
                 model = load_model(model_path)
@@ -41,6 +42,25 @@ def load_trained_models():
 
 # Evaluation
 def evaluate_model(model, X_test, y_test, model_name):
+    """Evaluate a model on test data
+
+    This function evaluates a model on test data and returns the evaluation results and Calculate the metrics.
+
+    - Accuracy: The ratio of correct predictions to total predictions. ( Misleading with imbalanced datasets. )
+    - Precision: The ratio of true positive predictions to total positive predictions. (Of all predicted positives, how many were actually correct.)
+    - Recall: The ratio of true positive predictions to total actual positive cases. (Of all actual positives, how many were predicted correctly?)
+    - F1-Score: The harmonic mean of precision and recall. (Balances precision and recall. AKA the Harmonic Mean of precision and recall.)
+    - ROC-AUC (Receiver Operating Characteristic Area Under Curve): The area under the receiver operating characteristic curve. (Measures the ability of the model to distinguish between positive and negative cases.)
+    
+    Args:
+        model (sklearn.base.BaseEstimator): Trained model
+        X_test (pd.DataFrame): Test features
+        y_test (pd.Series): Test labels
+        model_name (str): Name of the model
+    
+    Returns:
+        dict: Evaluation results
+    """
 
     try:
         y_pred = model.predict(X_test)
@@ -75,4 +95,16 @@ def evaluate_model(model, X_test, y_test, model_name):
     
     except Exception as e:
         logger.error(f"Failed to evaluate model: {str(e)}")
+        raise
+
+def clear_worse_models(best_model_name):
+    """Remove models that are worse than the best model"""
+    try:
+        for file in os.listdir(MODEL_DIR):
+            if file.endswith(".joblib"):
+                if file != best_model_name:
+                    logger.info(f"Removing worse model: {file}")
+                    os.remove(os.path.join(MODEL_DIR, file))
+    except Exception as e:
+        logger.error(f"Failed to clear worse models: {str(e)}")
         raise
