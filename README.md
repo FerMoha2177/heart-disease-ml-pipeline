@@ -37,6 +37,30 @@ heart-disease-ml-pipeline/
 └── scripts/                # Utility scripts
 ```
 
+# Screenshots
+
+## MongoDB Data Layers
+
+### Bronze Layer (Raw Data)
+![MongoDB Bronze Layer](docs/screenshots/mongo_bronze_screenshot.png)
+
+### Silver Layer (Cleaned Data)
+![MongoDB Silver Layer](docs/screenshots/mongo_silver_screenshot.png)
+
+### Gold Layer (Feature-Engineered Data)
+![MongoDB Gold Layer](docs/screenshots/mongo_gold_screenshot.png)
+
+## API Testing with Postman
+
+### Health Check Endpoint
+![Postman Health Check](docs/screenshots/detailed-health.png)
+
+### Overall Health Endpoint
+![Postman Overall Health](docs/screenshots/overall-health.png)
+
+### Prediction Endpoint
+![Postman Prediction](docs/screenshots/predict.png)
+
 ## Quick Start
 
 1. **Clone and setup environment**
