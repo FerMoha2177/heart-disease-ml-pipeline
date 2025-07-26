@@ -12,7 +12,7 @@
     "cp_atypical angina",
     "cp_non-anginal",
     "restecg_normal",
-    "slope_downsloping",
+    "restecg_st-t abnormality",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
@@ -30,7 +30,7 @@
     "cp_atypical angina",
     "cp_non-anginal",
     "restecg_normal",
-    "slope_downsloping",
+    "restecg_st-t abnormality",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
@@ -59,7 +59,7 @@
   "convergent_rejected": [
     "cp_typical angina",
     "restecg_lv hypertrophy",
-    "restecg_st-t abnormality"
+    "slope_downsloping"
   ],
   "categorical_features": [
     "sex",
@@ -79,7 +79,7 @@
     "cp_atypical angina",
     "cp_non-anginal",
     "restecg_normal",
-    "slope_downsloping",
+    "restecg_st-t abnormality",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
@@ -96,14 +96,14 @@
     "cp_asymptomatic",
     "cp_atypical angina",
     "cp_non-anginal",
-    "slope_downsloping",
+    "restecg_st-t abnormality",
     "slope_flat",
     "slope_not_tested",
     "slope_upsloping"
   ],
   "random_forest_features": [
-    "thalch",
     "cp_asymptomatic",
+    "thalch",
     "chol",
     "age",
     "oldpeak",
@@ -114,8 +114,8 @@
     "slope_flat",
     "cp_non-anginal",
     "fbs",
-    "slope_not_tested",
     "restecg_normal",
-    "slope_upsloping"
+    "slope_upsloping",
+    "slope_not_tested"
   ]
 }

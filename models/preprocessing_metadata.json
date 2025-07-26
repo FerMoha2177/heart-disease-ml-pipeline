@@ -1,8 +1,8 @@
 {
   "pipeline_version": "1.0.0",
-  "created_at": "2025-07-25T18:55:55.752572",
+  "created_at": "2025-07-25T22:20:42.683727",
   "gold_layer_shape": [
-    1840,
+    6440,
     17
   ],
   "final_feature_count": 16,
@@ -46,7 +46,7 @@
         "cp_atypical angina",
         "cp_non-anginal",
         "restecg_normal",
-        "slope_downsloping",
+        "restecg_st-t abnormality",
         "slope_flat",
         "slope_not_tested",
         "slope_upsloping"
@@ -100,7 +100,7 @@
       "cp_atypical angina",
       "cp_non-anginal",
       "restecg_normal",
-      "slope_downsloping",
+      "restecg_st-t abnormality",
       "slope_flat",
       "slope_not_tested",
       "slope_upsloping"
@@ -134,10 +134,10 @@
     }
   },
   "data_summary": {
-    "training_samples": 1840,
+    "training_samples": 6440,
     "target_distribution": {
-      "1": 1018,
-      "0": 822
+      "1": 3563,
+      "0": 2877
     },
     "feature_types": {
       "numerical": 16,

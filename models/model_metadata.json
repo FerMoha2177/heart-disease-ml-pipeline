@@ -1,5 +1,5 @@
 {
-    "model_name": "RandomForest",
+    "model_name": "Random Forest",
     "version": "1.0.0",
     "created_date": "2025-07-25",
     "algorithm": "RandomForestClassifier",
@@ -16,19 +16,19 @@
         "cp_atypical angina",
         "cp_non-anginal",
         "restecg_normal",
-        "slope_downsloping",
+        "restecg_st-t abnormality",
         "slope_flat",
         "slope_not_tested",
         "slope_upsloping"
     ],
     "target": "target",
     "metrics": {
-        "accuracy": 0.9728260869565217,
-        "precision": 0.9801980198019802,
-        "recall": 0.9705882352941176,
-        "f1_score": 0.9753694581280787,
-        "roc_auc": 0.983082257293161
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "roc_auc": 1.0
     },
-    "training_data_size": 1472,
-    "test_data_size": 368
+    "training_data_size": 5152,
+    "test_data_size": 1288
 }

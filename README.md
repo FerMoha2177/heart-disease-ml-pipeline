@@ -61,7 +61,30 @@ heart-disease-ml-pipeline/
 ### Prediction Endpoint
 ![Postman Prediction](docs/screenshots/predict.png)
 
-## Quick Start
+## Local Development with Docker Compose
+
+For a full-featured local dev environment (API, MongoDB, Jupyter, etc), use the provided helper script:
+
+```bash
+./devel/local_run.sh start      # Start all services (API, DB, Jupyter)
+./devel/local_run.sh stop       # Stop all services
+./devel/local_run.sh restart    # Restart services
+./devel/local_run.sh logs       # Show logs
+./devel/local_run.sh status     # Show container status
+./devel/local_run.sh test       # Run health checks
+./devel/local_run.sh clean      # Remove all containers/volumes
+./devel/local_run.sh help       # Show all commands
+```
+
+- Jupyter: http://localhost:8888
+- API Docs: http://localhost:8000/docs
+- MongoDB: localhost:27017 (see .env for credentials)
+
+**.env**: The script will auto-generate .env from .env.example if missing.
+
+---
+
+## Quick Start (Manual/Python-only)
 
 1. **Clone and setup environment**
    ```bash
