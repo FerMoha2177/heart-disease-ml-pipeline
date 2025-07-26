@@ -36,7 +36,55 @@ heart-disease-ml-pipeline/
 ├── deployment/             # Deployment configuration
 └── scripts/                # Utility scripts
 ```
+# Screenshots
 
+## MongoDB Data Layers
+
+### Bronze Layer (Raw Data)
+![MongoDB Bronze Layer](docs/screenshots/mongo_bronze_screenshot.png)
+
+### Silver Layer (Cleaned Data)
+![MongoDB Silver Layer](docs/screenshots/mongo_silver_screenshot.png)
+
+### Gold Layer (Feature-Engineered Data)
+![MongoDB Gold Layer](docs/screenshots/mongo_gold_screenshot.png)
+
+## API Testing with Postman
+
+### Health Check Endpoint
+![Postman Health Check](docs/screenshots/detailed-health.png)
+
+### Overall Health Endpoint
+![Postman Overall Health](docs/screenshots/overall-health.png)
+
+### Prediction Endpoint
+![Postman Prediction](docs/screenshots/predict.png)
+
+### Prediction Endpoint
+![Postman Prediction](docs/screenshots/predict2.png)
+
+## Local Development with Docker Compose
+
+For a full-featured local dev environment (API, MongoDB, Jupyter, etc), use the provided helper script:
+
+```bash
+./devel/local_run.sh start      # Start all services (API, DB, Jupyter)
+./devel/local_run.sh stop       # Stop all services
+./devel/local_run.sh restart    # Restart services
+./devel/local_run.sh logs       # Show logs
+./devel/local_run.sh status     # Show container status
+./devel/local_run.sh test       # Run health checks
+./devel/local_run.sh clean      # Remove all containers/volumes
+./devel/local_run.sh help       # Show all commands
+```
+
+- Jupyter: http://localhost:8888
+- API Docs: http://localhost:8000/docs
+- MongoDB: localhost:27017 (see .env for credentials)
+
+**.env**: The script will auto-generate .env from .env.example if missing.
+
+---
 ## Quick Start
 
 1. **Clone and setup environment**
@@ -176,7 +224,7 @@ Trained and compared 8 classification models using an 80/20 train-test split. Hy
 | LogisticRegression     | 0.8098   | 0.8252    | 0.8333 | 0.8293   | 0.8940  |
 | XGBoost                | 0.9457   | 0.9510    | 0.9510 | 0.9510   | 0.9782  |
 
-**Note:** Each model was tuned using parameter grid search to ensure fair comparison.
+**Note:** Each model was tuned using parameter grid search to ensure fair comparison. But clear data leakage and overfitting issues were identified.
 
 
 ### Final Model Choice: Random Forest
@@ -198,31 +246,32 @@ Trained and compared 8 classification models using an 80/20 train-test split. Hy
 # API Documentation
 
 ## Base URL
-- Local: http://localhost:8000
-- Deployed: https://your-app.onrender.com (Update with actual URL)
+- **Local:** http://localhost:8000
+- **Production:** https://heart-disease-ml-pipeline.onrender.com/
 
 ## Endpoints
 
-### 1. Health Check
-- **GET /api/v1/health**
-- **Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-07-25T20:00:00.000000",
-  "message": "Heart Disease Prediction API is running"
-}
-```
+### 1. Health Check (GET)
+- **URL:** https://heart-disease-ml-pipeline.onrender.com/api/v1/health
+- **Method:** GET
+- **Description:** Returns API status and uptime.
+- **Expected:** 200 OK with API status
 
-### 2. Heart Disease Prediction
-- **POST /api/v1/predict**
+### 2. Database Health Check (GET)
+- **URL:** https://heart-disease-ml-pipeline.onrender.com/api/v1/health/detailed
+- **Method:** GET
+- **Description:** Returns MongoDB connection status and collection info.
+- **Expected:** MongoDB connection status and collection info
+
+### 3. Heart Disease Prediction (POST)
+- **URL:** https://heart-disease-ml-pipeline.onrender.com/api/v1/predict
+- **Method:** POST
+- **Headers:** Content-Type: application/json
+- **Description:** Takes patient data and returns a heart disease risk prediction.
+- **Expected:** JSON with prediction, probability, confidence, risk factors, etc.
 - **What It Does:**
   This is the core functionality of the API – it takes patient medical data and returns a heart disease risk prediction.
-- **HTTP Method:** POST (send data to the server)
-- **URL:** `/api/v1/predict`
-- **Content-Type:** application/json
-
-#### Input Data (Request Body):
+- **Input Data (Request Body):**
 ```json
 {
   "age": 55,           // Patient's age in years
