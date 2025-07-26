@@ -45,13 +45,7 @@ class DatabaseService:
             
             self.client = AsyncIOMotorClient(
                 self.connection_string,
-                serverSelectionTimeoutMS=15000,  # Increased timeout for Atlas
-                connectTimeoutMS=30000,
-                socketTimeoutMS=30000,
-                maxPoolSize=10,
-                retryWrites=True,
-                # Atlas-specific settings
-                appName="heart-disease-api"
+                serverSelectionTimeoutMS=15000
             )
             
             # Test the connection
