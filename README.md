@@ -26,15 +26,53 @@ A machine learning pipeline for heart disease prediction using medallion archite
 
 ```
 heart-disease-ml-pipeline/
-├── api/                    # FastAPI application
-├── notebooks/              # Jupyter notebooks for ML pipeline
-├── models/                 # Saved ML models
-├── data/                   # Dataset storage
-├── src/                    # Shared utilities
-├── tests/                  # Test files
-├── docs/                   # Documentation
-├── deployment/             # Deployment configuration
-└── scripts/                # Utility scripts
+├── api/                       # FastAPI application
+│   ├── main.py                # API entrypoint
+│   ├── config.py              # API configuration
+│   ├── dependencies.py        # Dependency injection
+│   ├── models/                # Pydantic schemas (request/response)
+│   │   ├── health.py
+│   │   └── prediction.py
+│   ├── routes/                # API endpoints
+│   │   ├── health.py          # Health check endpoints
+│   │   └── prediction.py      # Prediction endpoint
+│   └── services/              # Business logic/services
+│       ├── database_service.py
+│       ├── model_service.py
+│       └── preprocessing_service.py
+├── config/                    # Logging and config utilities
+│   └── logging.py
+├── data/                      # Dataset storage
+├── devel/                     # Local dev scripts (Docker Compose, etc)
+│   ├── local_run.sh           # Main dev runner script
+│   ├── docker-compose.yml     # Docker Compose config
+│   └── Dockerfile             # Dockerfile for API
+├── docs/                      # Documentation & screenshots
+│   ├── screenshots/           # PNGs for MongoDB, Postman, etc
+│   └── ...
+├── logs/                      # Log files
+├── models/                    # Saved ML models and artifacts
+│   ├── heart_disease_classifier.joblib
+│   └── model_metadata.json
+├── notebooks/                 # Jupyter notebooks for pipeline steps
+│   ├── 01_data_ingestion.ipynb
+│   ├── 02_data_preprocessing.ipynb
+│   ├── 03_feature_engineering.ipynb
+│   ├── 04_model_training.ipynb
+│   └── 05_model_evaluation.ipynb
+├── src/                       # Shared Python utilities
+│   └── utils/
+│       ├── data_utils.py
+│       ├── evaluate_utils.py
+│       ├── feature_eng_utils.py
+│       ├── graph_utils.py
+│       ├── notebook_setup.py
+│       ├── training_utils.py
+│       └── validators.py
+├── tests/                     # Test files
+├── requirements.txt           # Python dependencies
+├── setup.py                   # Project setup
+└── README.md                  # Project documentation
 ```
 # Screenshots
 
