@@ -222,31 +222,32 @@ Trained and compared 8 classification models using an 80/20 train-test split. Hy
 # API Documentation
 
 ## Base URL
-- Local: http://localhost:8000
-- Deployed: https://your-app.onrender.com (Update with actual URL)
+- **Local:** http://localhost:8000
+- **Production:** https://heart-disease-ml-pipeline.onrender.com/
 
 ## Endpoints
 
-### 1. Health Check
-- **GET /api/v1/health**
-- **Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-07-25T20:00:00.000000",
-  "message": "Heart Disease Prediction API is running"
-}
-```
+### 1. Health Check (GET)
+- **URL:** https://heart-disease-ml-pipeline.onrender.com/api/v1/health
+- **Method:** GET
+- **Description:** Returns API status and uptime.
+- **Expected:** 200 OK with API status
 
-### 2. Heart Disease Prediction
-- **POST /api/v1/predict**
+### 2. Database Health Check (GET)
+- **URL:** https://heart-disease-ml-pipeline.onrender.com/api/v1/health/detailed
+- **Method:** GET
+- **Description:** Returns MongoDB connection status and collection info.
+- **Expected:** MongoDB connection status and collection info
+
+### 3. Heart Disease Prediction (POST)
+- **URL:** https://heart-disease-ml-pipeline.onrender.com/api/v1/predict
+- **Method:** POST
+- **Headers:** Content-Type: application/json
+- **Description:** Takes patient data and returns a heart disease risk prediction.
+- **Expected:** JSON with prediction, probability, confidence, risk factors, etc.
 - **What It Does:**
   This is the core functionality of the API – it takes patient medical data and returns a heart disease risk prediction.
-- **HTTP Method:** POST (send data to the server)
-- **URL:** `/api/v1/predict`
-- **Content-Type:** application/json
-
-#### Input Data (Request Body):
+- **Input Data (Request Body):**
 ```json
 {
   "age": 55,           // Patient's age in years
