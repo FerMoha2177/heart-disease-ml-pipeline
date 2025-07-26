@@ -26,10 +26,10 @@ def get_models(y_train):
     try:
         # get models
         models = {
-            'Logistic Regression': LogisticRegression(max_iter=1000),
-            'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced'),
-            'XGBoost': XGBClassifier(n_estimators=100, learning_rate=0.1, random_state=42, scale_pos_weight=(len(y_train) - sum(y_train)) / sum(y_train)),
-            'SVM': SVC(kernel='rbf', class_weight='balanced', random_state=42)
+            'LogisticRegression': LogisticRegression(max_iter=1000),
+            'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),
+            'XGBoost': XGBClassifier(objective='binary:logistic', random_state=42),
+            'SVM': SVC(kernel='rbf', probability=True)  # Optional 4th
         }
         logger.info("\nRetrieved models: {}".format(models.keys()))
         return models   
